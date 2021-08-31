@@ -1,4 +1,6 @@
 {
-    "metadata": { "token": "<YOUR TOKEN HERE>" },
-    "data": {}
+  "token": "<YOUR TOKEN HERE>",
+  "playlists": {
+    "p1": [ "/glob/of/track/paths" ]
+  }
 }
