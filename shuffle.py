@@ -1,75 +1,94 @@
 #!/usr/bin/python3
 
+import datetime
 import discord
 import discord.ext.commands
 import glob
 import json
 import os
 import random
-#from discord import FFmpegOpusAudio
-#from discord.ext import commands
-#from random import shuffle
 
 CONFIG_FILE = 'shuffle.json'
+READ_AUDIO_CHUNK_MS = 20
 
 def file_stem(path):
     basename = os.path.basename(path)
     return basename.split('.')[0]
+
+# Wrapper around FFmpegOpusAudio that counts the number of milliseconds
+# streamed so far.
+class ElapsedAudio(discord.FFmpegOpusAudio):
+    def __init__(self, filename, elapsed_ms=0):
+        # TODO: foward args if more sophisticated construction is needed.
+        ss = datetime.timedelta(milliseconds=elapsed_ms)
+        super().__init__(filename, options=f'-ss {str(ss)}')
+
+        self._elapsed_ms = elapsed_ms
+
+    def read(self):
+        self._elapsed_ms += READ_AUDIO_CHUNK_MS
+        return super().read()
+
+    @property
+    def elapsed_ms(self):
+        return self._elapsed_ms
 
 # Maintains a cursor in a list of music files and exposes an audio stream for
 # the current file.
 class Playlist:
     def __init__(self, name, fs):
         # Make copy.
-        self.name = name
-        self.fs = list(fs)
+        self._name = name
+        self._fs = list(fs)
 
         # Populated in Restart.
-        self.index = None
-        self.cur_src = None
+        self._index = None
+        self._cur_src = None
 
         # Start shuffled.
         self.Restart()
 
     # Clear current song and reshuffle playlist.
     def Restart(self):
-        print(f'[INFO] Restarting playlist "{self.name}".')
+        print(f'[INFO] Restarting playlist "{self._name}".')
 
-        if self.cur_src:
-            self.cur_src.clean_up()
-        self.cur_src = None
+        if self._cur_src:
+            self._cur_src.cleanup()
+        self._cur_src = None
 
-        random.shuffle(self.fs)
-        self.index = 0
+        random.shuffle(self._fs)
+        self._index = 0
 
     # Return the current audio source, or load it if it isn't initialised.
     async def CurrentStream(self):
-        if self.index >= len(self.fs):
+        if self._index >= len(self._fs):
             return None
 
-        if not self.cur_src:
-            print(f'[INFO] Starting "{file_stem(self.fs[self.index])}".')
-            self.cur_src = await discord.FFmpegOpusAudio.from_probe(self.fs[self.index])
+        if self._cur_src:
+            print(f'[INFO] Resuming "{file_stem(self._fs[self._index])}".')
+            self._cur_src.cleanup()
+            self._cur_src = ElapsedAudio(self._fs[self._index], self._cur_src.elapsed_ms)
         else:
-            print(f'[INFO] Resuming "{file_stem(self.fs[self.index])}".')
+            print(f'[INFO] Starting "{file_stem(self._fs[self._index])}".')
+            self._cur_src = ElapsedAudio(self._fs[self._index])
 
-        return self.cur_src
+        return self._cur_src
 
     # Move to the next song, reshuffling and starting again if there isn't one.
     def Next():
-        self.index += 1
+        self._index += 1
 
-        if self.index >= len(self.fs):
+        if self._index >= len(self._fs):
             self.Restart()
             return
 
-        if self.cur_src:
-            self.cur_src.clean_up()
-        self.cur_src = None
+        if self._cur_src:
+            self._cur_src.clean_up()
+        self._cur_src = None
 
     def CurrentIndex(self):
-        print(self.fs[self.index])
-        return self.index
+        print(self._fs[self._index])
+        return self._index
 
 # Read config.
 
@@ -111,14 +130,15 @@ async def start(ctx):
     await ctx.send(f'Joined the voice channel {dest.channel.name}.')
 
 @bot.command(name='play')
-async def play(ctx):
+async def play(ctx, playlist):
     print(f'[INFO] Playback started.')
 
     if not can_command(ctx):
         await ctx.send(f'You must connect yourself to the same channel as {bot.user.name}!')
         return
 
-    ctx.voice_client.play(await playlists['p1'].CurrentStream())
+    ctx.voice_client.stop()
+    ctx.voice_client.play(await playlists[playlist].CurrentStream())
 
 # Run bot.
 
