@@ -60,7 +60,7 @@ class Playlist:
         self._index = 0
 
     # Return the current audio source, or load it if it isn't initialised.
-    async def CurrentStream(self):
+    async def MakeCurrentStream(self):
         if self._index >= len(self._fs):
             return None
 
@@ -114,8 +114,6 @@ async def on_ready():
 
 @bot.command(name='start')
 async def start(ctx):
-    print(f'[INFO] Joining voice channel.')
-
     if not can_command(ctx):
         await ctx.send(f'You must connect yourself to the same channel as {bot.user.name}!')
         return
@@ -126,19 +124,31 @@ async def start(ctx):
         await ctx.send('User not in voice channel!')
         return
 
+    print(f'[INFO] Joining voice channel.')
+
     await dest.channel.connect()
     await ctx.send(f'Joined the voice channel {dest.channel.name}.')
 
 @bot.command(name='play')
 async def play(ctx, playlist):
-    print(f'[INFO] Playback started.')
-
     if not can_command(ctx):
         await ctx.send(f'You must connect yourself to the same channel as {bot.user.name}!')
         return
 
+    print(f'[INFO] Playback started.')
+
     ctx.voice_client.stop()
-    ctx.voice_client.play(await playlists[playlist].CurrentStream())
+    ctx.voice_client.play(await playlists[playlist].MakeCurrentStream())
+
+@bot.command(name='pause')
+async def pause(ctx):
+    if not can_command(ctx):
+        await ctx.send(f'You must connect yourself to the same channel as {bot.user.name}!')
+        return
+
+    print(f'[INFO] Playback paused.')
+
+    ctx.voice_client.stop()
 
 # Run bot.
 
