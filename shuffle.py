@@ -30,7 +30,7 @@ async def start(ctx):
     #    await ctx.voice_state.voice.move_to(dest)
     #    return
 
-    await dest.channel.connect() # CONNECTING TO DESTINATION
+    await dest.channel.connect()
     await ctx.send(f'Joined the voice channel {dest.channel.name}.')
 
 @bot.command(name='test')
