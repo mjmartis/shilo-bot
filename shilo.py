@@ -8,7 +8,7 @@ import json
 import os
 import random
 
-CONFIG_FILE = 'shuffle.json'
+CONFIG_FILE = 'shilo.json'
 READ_AUDIO_CHUNK_MS = 20
 
 def file_stem(path):
