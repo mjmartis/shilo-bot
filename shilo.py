@@ -52,24 +52,22 @@ class Playlist:
     def Restart(self):
         print(f'[INFO] Restarting playlist "{self._name}".')
 
-        if self._cur_src:
-            self._cur_src.cleanup()
         self._cur_src = None
-
         random.shuffle(self._fs)
         self._index = 0
 
     # Return the current audio source, or load it if it isn't initialised.
+    # Caller is responsible for cleaning up resources for the returned stream.
     async def MakeCurrentStream(self):
         if self._index >= len(self._fs):
             return None
 
         if self._cur_src:
-            print(f'[INFO] Resuming "{file_stem(self._fs[self._index])}".')
+            print(f'[INFO] Resuming "{self.CurrentName()}".')
             self._cur_src.cleanup()
             self._cur_src = ElapsedAudio(self._fs[self._index], self._cur_src.elapsed_ms)
         else:
-            print(f'[INFO] Starting "{file_stem(self._fs[self._index])}".')
+            print(f'[INFO] Starting "{self.CurrentName()}".')
             self._cur_src = ElapsedAudio(self._fs[self._index])
 
         return self._cur_src
@@ -82,13 +80,13 @@ class Playlist:
             self.Restart()
             return
 
-        if self._cur_src:
-            self._cur_src.clean_up()
         self._cur_src = None
 
     def CurrentIndex(self):
-        print(self._fs[self._index])
         return self._index
+
+    def CurrentName(self):
+        return file_stem(self._fs[self._index]) if self._fs else None
 
 # Read config.
 
@@ -136,14 +134,33 @@ async def join(ctx):
     return True
 
 @bot.command(name='start')
-async def start(ctx, playlist):
+async def start(ctx, playlist_name):
     if not await join(ctx):
         return
 
+    if playlist_name not in playlists:
+        print(f'[ERROR] Playlist "{playlist_name}" doesn\'t exist.')
+        await ctx.send(f'Playlist "{playlist_name}" doesn\'t exist!')
+        return
+
+
+    playlist = playlists[playlist_name]
+    if not playlist.CurrentName():
+        print(f'[WARNING] Tried to play empty playlist "{playlist_name}".')
+        await ctx.send(f'Couldn\'t play empty playlist "{playlist_name}"!')
+        return
+
+    stream = await playlist.MakeCurrentStream()
+    if not stream:
+        print(f'[ERROR] Couldn\'t play "{playlist.CurrentName()}".')
+        await ctx.send(f'Couldn\'t play "{playlist.CurrentName()}"!')
+        return
+
     print(f'[INFO] Playback started.')
+    await ctx.send(f'Playing "{playlist.CurrentName()}".')
 
     ctx.voice_client.stop()
-    ctx.voice_client.play(await playlists[playlist].MakeCurrentStream())
+    ctx.voice_client.play(stream)
 
 @bot.command(name='pause')
 async def pause(ctx):
