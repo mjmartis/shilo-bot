@@ -134,21 +134,23 @@ async def join(ctx):
     return True
 
 @bot.command(name='start')
-async def start(ctx, playlist_name):
+async def start(ctx, playlist_name, restart=False):
     if not await join(ctx):
         return
 
     if playlist_name not in playlists:
-        print(f'[ERROR] Playlist "{playlist_name}" doesn\'t exist.')
+        print(f'[WARNING] Playlist "{playlist_name}" doesn\'t exist.')
         await ctx.send(f'Playlist "{playlist_name}" doesn\'t exist!')
         return
-
 
     playlist = playlists[playlist_name]
     if not playlist.CurrentName():
         print(f'[WARNING] Tried to play empty playlist "{playlist_name}".')
         await ctx.send(f'Couldn\'t play empty playlist "{playlist_name}"!')
         return
+
+    if restart:
+        playlist.Restart()
 
     stream = await playlist.MakeCurrentStream()
     if not stream:
@@ -162,13 +164,25 @@ async def start(ctx, playlist_name):
     ctx.voice_client.stop()
     ctx.voice_client.play(stream)
 
-@bot.command(name='pause')
+@bot.command(name='restart')
+async def restart(ctx, playlist_name):
+    await start(ctx, playlist_name, True)
+
+@bot.command(name='stop')
 async def pause(ctx):
+    if not await join(ctx):
+        return
+
     if not can_command(ctx):
         await ctx.send(f'You must connect yourself to the same channel as {bot.user.name}!')
         return
 
-    print(f'[INFO] Playback paused.')
+    if not ctx.voice_client.is_playing():
+        print(f'[WARNING] Tried to stop with nothing playing.')
+        await ctx.send(f'Nothing to stop!')
+        return
+
+    print(f'[INFO] Playback stopped.')
 
     ctx.voice_client.stop()
 
