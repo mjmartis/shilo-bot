@@ -112,27 +112,32 @@ def can_command(ctx):
 async def on_ready():
     print(f'[INFO] {bot.user.name} connected.')
 
-@bot.command(name='start')
-async def start(ctx):
-    if not can_command(ctx):
-        await ctx.send(f'You must connect yourself to the same channel as {bot.user.name}!')
-        return
-
+# Returns true if bot successfully joined author's voice channel.
+@bot.command(name='join')
+async def join(ctx):
     dest = ctx.author.voice
 
+    # No channel to connect to.
     if not dest:
-        await ctx.send('User not in voice channel!')
-        return
+        await ctx.send('You must connect to a voice channel!')
+        return False
+
+    # Already connected to correct channel.
+    if ctx.voice_client and ctx.voice_client.channel == dest.channel:
+        return True
 
     print(f'[INFO] Joining voice channel.')
 
+    if ctx.voice_client:
+        await ctx.voice_client.disconnect()
+
     await dest.channel.connect()
     await ctx.send(f'Joined the voice channel {dest.channel.name}.')
+    return True
 
-@bot.command(name='play')
-async def play(ctx, playlist):
-    if not can_command(ctx):
-        await ctx.send(f'You must connect yourself to the same channel as {bot.user.name}!')
+@bot.command(name='start')
+async def start(ctx, playlist):
+    if not await join(ctx):
         return
 
     print(f'[INFO] Playback started.')
