@@ -279,11 +279,8 @@ async def next(ctx):
     print(f'[INFO] Skipping to next.')
     ctx.voice_client.stop()
 
+# Basic parsing of human-readable intervals like '1s', '10mins'.
 def parse_interval(s):
-    suffix = s.lstrip('0123456789.')
-    unit = suffix.strip().lower()
-    num = float(s[:-len(suffix)].strip())
-
     INTERVALS = {
         "s": datetime.timedelta(seconds=1),
         "sec": datetime.timedelta(seconds=1),
@@ -298,11 +295,15 @@ def parse_interval(s):
         "hours": datetime.timedelta(hours=1),
     }
 
-    if unit not in INTERVALS:
-        print(f'[WARNING] Couldn\'t parse interval "{s}".')
-        return datetime.timedelta()
+    try:
+        suffix = s.lstrip('0123456789.')
+        unit = suffix.strip().lower()
+        num = float(s[:-len(suffix)].strip())
 
-    return num * INTERVALS[unit]
+        return num * INTERVALS[unit]
+
+    except:
+        return None
 
 @g_bot.command(name='ff')
 async def ff(ctx, interval_str):
@@ -319,6 +320,10 @@ async def ff(ctx, interval_str):
         return
 
     interval = parse_interval(interval_str)
+    if not interval:
+        await ctx.send(f'Couldn\'t understand interval "{interval_str}"!')
+        print(f'[WARNING] Cannot fast-forward by bad interval "{interval_str}".')
+        return
 
     print(f'[INFO] Fast-forwarding by {str(interval)}')
 
