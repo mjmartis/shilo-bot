@@ -4,7 +4,6 @@ import asyncio
 import datetime
 import discord
 import discord.ext.commands
-import functools
 import glob
 import json
 import os
@@ -39,6 +38,10 @@ class ElapsedAudio(discord.FFmpegOpusAudio):
 # the current file.
 class Playlist:
     def __init__(self, name, fs):
+        # Public; used by clients to determine when to automatically skip to
+        # the next song.
+        self.is_stopped = False
+
         # Make copy.
         self._name = name
         self._fs = list(fs)
@@ -65,11 +68,11 @@ class Playlist:
             return None
 
         if self._cur_src:
-            print(f'[INFO] Resuming "{self.CurrentName()}".')
+            print(f'[INFO] Resuming "{self.current_name}".')
             self._cur_src.cleanup()
             self._cur_src = ElapsedAudio(self._fs[self._index], self._cur_src.elapsed_ms)
         else:
-            print(f'[INFO] Starting "{self.CurrentName()}".')
+            print(f'[INFO] Starting "{self.current_name}".')
             self._cur_src = ElapsedAudio(self._fs[self._index])
 
         return self._cur_src
@@ -84,19 +87,24 @@ class Playlist:
 
         self._cur_src = None
 
-    def CurrentIndex(self):
-        return self._index
+    @property
+    def name(self):
+        return self._name
 
-    def CurrentName(self):
+    @property
+    def current_name(self):
         return file_stem(self._fs[self._index]) if self._fs else None
 
 # Read config.
 
-config = json.loads(open(CONFIG_FILE, 'r').read())
+g_config = json.loads(open(CONFIG_FILE, 'r').read())
 
-playlists = {}
-for name, globs in config['playlists'].items():
-    playlists[name] = Playlist(name, sum([glob.glob(p) for p in globs], []))
+# Load playlists.
+
+g_playlists = {}
+for name, globs in g_config['playlists'].items():
+    g_playlists[name] = Playlist(name, sum([glob.glob(p) for p in globs], []))
+g_playlist = None
 
 # Define bot.
 
@@ -130,10 +138,12 @@ async def join(ctx):
         await ctx.voice_client.disconnect()
 
     await dest.channel.connect()
+
     print(f'[INFO] Joined voice channel "{dest.channel.name}".')
     await ctx.send(f'Joined the voice channel "{dest.channel.name}".')
     return True
 
+# Skips to the next song and begins playing.
 async def play_next(ctx, playlist):
     playlist.Next()
     await play_current(ctx, playlist)
@@ -141,39 +151,55 @@ async def play_next(ctx, playlist):
 # Play the current entry from the given playlist over the bot voice channel.
 # Bot must be connected to some voice channel.
 async def play_current(ctx, playlist):
-    if not playlist.CurrentName():
+    global g_playlist
+
+    if not playlist.current_name:
         print(f'[WARNING] Tried to play empty playlist "{playlist_name}".')
         await ctx.send(f'Couldn\'t play empty playlist "{playlist_name}"!')
         return
 
     stream = await playlist.MakeCurrentStream()
     if not stream:
-        print(f'[ERROR] Couldn\'t play "{playlist.CurrentName()}".')
-        await ctx.send(f'Couldn\'t play "{playlist.CurrentName()}"!')
+        print(f'[ERROR] Couldn\'t play "{playlist.current_name}".')
+        await ctx.send(f'Couldn\'t play "{playlist.current_name}"!')
         return
 
     print(f'[INFO] Playback started.')
-    await ctx.send(f'Playing "{playlist.CurrentName()}".')
+    await ctx.send(f'Playing "{playlist.current_name}".')
 
-    def play_next_coro(in_ctx, in_playlist, error):
-        coro = play_next(in_ctx, in_playlist)
+    def play_next_coro(ctx, playlist, error):
+        # Don't continue to next song when this callback has been executed
+        # because of e.g. the !stop command.
+        if playlist.is_stopped:
+            return
+
+        coro = play_next(ctx, playlist)
         fut = asyncio.run_coroutine_threadsafe(coro, ctx.voice_client.loop)
         fut.result()
-    callback = functools.partial(play_next_coro, ctx, playlist)
+    callback = lambda e, c=ctx, p=playlist: play_next_coro(c, p, e)
 
+    # Needed to stop the after-play callback from starting the next song.
+    if g_playlist:
+        g_playlist.is_stopped = True
     ctx.voice_client.stop()
+
+    playlist.is_stopped = False
     ctx.voice_client.play(stream, after=callback)
+
+    # Update for !next, !skip etc.
+    g_playlist = playlist
+
 
 @bot.command(name='start')
 async def start(ctx, playlist_name, restart=False):
     if not await join(ctx):
         return
 
-    if playlist_name not in playlists:
+    if playlist_name not in g_playlists:
         print(f'[WARNING] Playlist "{playlist_name}" doesn\'t exist.')
         await ctx.send(f'Playlist "{playlist_name}" doesn\'t exist!')
         return
-    playlist = playlists[playlist_name]
+    playlist = g_playlists[playlist_name]
 
     if restart:
         playlist.Restart()
@@ -181,11 +207,14 @@ async def start(ctx, playlist_name, restart=False):
     await play_current(ctx, playlist)
 
 @bot.command(name='restart')
-async def restart(ctx, playlist_name):
-    await start(ctx, playlist_name, True)
+async def restart(ctx, playlist_name=None):
+    auto_name = playlist_name or (g_playlist.name if g_playlist else None)
+    await start(ctx, auto_name, True)
 
 @bot.command(name='stop')
-async def pause(ctx):
+async def stop(ctx):
+    global g_playlists
+
     if not await join(ctx):
         return
 
@@ -198,10 +227,30 @@ async def pause(ctx):
         await ctx.send(f'Nothing to stop!')
         return
 
+    # Needed to stop the after-play callback from starting the next song.
+    g_playlist.is_stopped = True
+    ctx.voice_client.stop()
+
     print(f'[INFO] Playback stopped.')
 
+@bot.command(name='next')
+async def next(ctx):
+    if not await join(ctx):
+        return
+
+    if not can_command(ctx):
+        await ctx.send(f'You must connect yourself to the same channel as {bot.user.name}!')
+        return
+
+    if not ctx.voice_client.is_playing():
+        print(f'[WARNING] Tried to skip with nothing playing.')
+        await ctx.send(f'Nothing to skip!')
+        return
+
+    # The after-play callback will automatically start playing the next song.
+    print(f'[INFO] Skipping to next.')
     ctx.voice_client.stop()
 
 # Run bot.
 
-bot.run(config['token'])
+bot.run(g_config['token'])
