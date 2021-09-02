@@ -135,6 +135,11 @@ async def join(ctx):
         return True
 
     if ctx.voice_client:
+        # Prevent after-play callback from moving to next song.
+        if g_playlist:
+            g_playlist.is_stopped = True
+
+        ctx.voice_client.stop()
         await ctx.voice_client.disconnect()
 
     await dest.channel.connect()
@@ -142,11 +147,6 @@ async def join(ctx):
     print(f'[INFO] Joined voice channel "{dest.channel.name}".')
     await ctx.send(f'Joined the voice channel "{dest.channel.name}".')
     return True
-
-# Skips to the next song and begins playing.
-async def play_next(ctx, playlist):
-    playlist.NextTrack()
-    await play_current(ctx, playlist)
 
 # Play the current entry from the given playlist over the bot voice channel.
 # Bot must be connected to some voice channel.
@@ -164,16 +164,19 @@ async def play_current(ctx, playlist):
         await ctx.send(f'Couldn\'t play "{playlist.current_track_name}"!')
         return
 
-    def play_next_coro(ctx, playlist, error):
+    def play_next(ctx, playlist, error):
         # Don't continue to next song when this callback has been executed
         # because of e.g. the !stop command.
         if playlist.is_stopped:
             return
 
-        coro = play_next(ctx, playlist)
+        playlist.NextTrack()
+
+        # Schedule coroutine.
+        coro = play_current(ctx, playlist)
         fut = asyncio.run_coroutine_threadsafe(coro, ctx.voice_client.loop)
         fut.result()
-    callback = lambda e, c=ctx, p=playlist: play_next_coro(c, p, e)
+    callback = lambda e, c=ctx, p=playlist: play_next(c, p, e)
 
     # Needed to stop the after-play callback from starting the next song.
     if g_playlist:
