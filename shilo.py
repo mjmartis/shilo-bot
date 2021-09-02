@@ -20,7 +20,7 @@ PRINT_TRACK_WIDTH = 40
 class ElapsedAudio(discord.FFmpegOpusAudio):
     def __init__(self, filename, elapsed=datetime.timedelta()):
         # TODO: foward args if more sophisticated construction is needed.
-        super().__init__(filename, options=f'-ss {str(elapsed)}')
+        super().__init__(filename, before_options=f'-ss {str(elapsed)}')
 
         self._elapsed = elapsed
 
