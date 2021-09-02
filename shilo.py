@@ -210,6 +210,11 @@ async def start(ctx, playlist_name, restart=False):
 
 @g_bot.command(name='restart')
 async def restart(ctx, playlist_name=None):
+    if not playlist_name and not g_playlist:
+        print(f'[WARNING] Tried implicit restart with no previous playlist.')
+        await ctx.send('No playlist to restart!')
+        return
+
     auto_name = playlist_name or (g_playlist.name if g_playlist else None)
     await start(ctx, auto_name, True)
 
