@@ -12,10 +12,6 @@ import random
 CONFIG_FILE = 'shilo.json'
 READ_AUDIO_CHUNK_MS = 20
 
-def file_stem(path):
-    basename = os.path.basename(path)
-    return basename.split('.')[0]
-
 # Wrapper around FFmpegOpusAudio that counts the number of milliseconds
 # streamed so far.
 class ElapsedAudio(discord.FFmpegOpusAudio):
@@ -33,6 +29,10 @@ class ElapsedAudio(discord.FFmpegOpusAudio):
     @property
     def elapsed_ms(self):
         return self._elapsed_ms
+
+def file_stem(path):
+    basename = os.path.basename(path)
+    return basename.split('.')[0]
 
 # Maintains a cursor in a list of music files and exposes an audio stream for
 # the current file.
@@ -63,22 +63,22 @@ class Playlist:
 
     # Return the current audio source, or load it if it isn't initialised.
     # Caller is responsible for cleaning up resources for the returned stream.
-    async def MakeCurrentStream(self):
+    async def MakeCurrentTrackStream(self):
         if self._index >= len(self._fs):
             return None
 
         if self._cur_src:
-            print(f'[INFO] Resuming "{self.current_name}".')
+            print(f'[INFO] Resuming "{self.current_track_name}".')
             self._cur_src.cleanup()
             self._cur_src = ElapsedAudio(self._fs[self._index], self._cur_src.elapsed_ms)
         else:
-            print(f'[INFO] Starting "{self.current_name}".')
+            print(f'[INFO] Starting "{self.current_track_name}".')
             self._cur_src = ElapsedAudio(self._fs[self._index])
 
         return self._cur_src
 
     # Move to the next song, reshuffling and starting again if there isn't one.
-    def Next(self):
+    def NextTrack(self):
         self._index += 1
 
         if self._index >= len(self._fs):
@@ -92,7 +92,7 @@ class Playlist:
         return self._name
 
     @property
-    def current_name(self):
+    def current_track_name(self):
         return file_stem(self._fs[self._index]) if self._fs else None
 
 # Read config.
@@ -108,7 +108,7 @@ g_playlist = None
 
 # Define bot.
 
-bot = discord.ext.commands.Bot(command_prefix='!')
+g_bot = discord.ext.commands.Bot(command_prefix='!')
 
 # Returns true if the author can command the bot. That is, if the bot is in the
 # same channel as the author.
@@ -116,12 +116,12 @@ def can_command(ctx):
     return ctx.author.voice and (not ctx.voice_client or
            ctx.author.voice.channel == ctx.voice_client.channel)
 
-@bot.event
+@g_bot.event
 async def on_ready():
-    print(f'[INFO] {bot.user.name} connected.')
+    print(f'[INFO] {g_bot.user.name} connected.')
 
 # Returns true if bot successfully joined author's voice channel.
-@bot.command(name='join')
+@g_bot.command(name='join')
 async def join(ctx):
     dest = ctx.author.voice
 
@@ -145,7 +145,7 @@ async def join(ctx):
 
 # Skips to the next song and begins playing.
 async def play_next(ctx, playlist):
-    playlist.Next()
+    playlist.NextTrack()
     await play_current(ctx, playlist)
 
 # Play the current entry from the given playlist over the bot voice channel.
@@ -153,19 +153,19 @@ async def play_next(ctx, playlist):
 async def play_current(ctx, playlist):
     global g_playlist
 
-    if not playlist.current_name:
+    if not playlist.current_track_name:
         print(f'[WARNING] Tried to play empty playlist "{playlist_name}".')
         await ctx.send(f'Couldn\'t play empty playlist "{playlist_name}"!')
         return
 
-    stream = await playlist.MakeCurrentStream()
+    stream = await playlist.MakeCurrentTrackStream()
     if not stream:
-        print(f'[ERROR] Couldn\'t play "{playlist.current_name}".')
-        await ctx.send(f'Couldn\'t play "{playlist.current_name}"!')
+        print(f'[ERROR] Couldn\'t play "{playlist.current_track_name}".')
+        await ctx.send(f'Couldn\'t play "{playlist.current_track_name}"!')
         return
 
     print(f'[INFO] Playback started.')
-    await ctx.send(f'Playing "{playlist.current_name}".')
+    await ctx.send(f'Playing "{playlist.current_track_name}".')
 
     def play_next_coro(ctx, playlist, error):
         # Don't continue to next song when this callback has been executed
@@ -190,7 +190,7 @@ async def play_current(ctx, playlist):
     g_playlist = playlist
 
 
-@bot.command(name='start')
+@g_bot.command(name='start')
 async def start(ctx, playlist_name, restart=False):
     if not await join(ctx):
         return
@@ -201,17 +201,19 @@ async def start(ctx, playlist_name, restart=False):
         return
     playlist = g_playlists[playlist_name]
 
+    await ctx.send(f'Playing playlist "{playlist_name}".')
+
     if restart:
         playlist.Restart()
 
     await play_current(ctx, playlist)
 
-@bot.command(name='restart')
+@g_bot.command(name='restart')
 async def restart(ctx, playlist_name=None):
     auto_name = playlist_name or (g_playlist.name if g_playlist else None)
     await start(ctx, auto_name, True)
 
-@bot.command(name='stop')
+@g_bot.command(name='stop')
 async def stop(ctx):
     global g_playlists
 
@@ -219,7 +221,7 @@ async def stop(ctx):
         return
 
     if not can_command(ctx):
-        await ctx.send(f'You must connect yourself to the same channel as {bot.user.name}!')
+        await ctx.send(f'You must connect yourself to the same channel as {g_bot.user.name}!')
         return
 
     if not ctx.voice_client.is_playing():
@@ -231,15 +233,16 @@ async def stop(ctx):
     g_playlist.is_stopped = True
     ctx.voice_client.stop()
 
-    print(f'[INFO] Playback stopped.')
+    print(f'[INFO] Playback of "{g_playlist.current_track_name}" stopped.')
+    await ctx.send(f'Stopping playlist "{g_playlist.name}".')
 
-@bot.command(name='next')
+@g_bot.command(name='next')
 async def next(ctx):
     if not await join(ctx):
         return
 
     if not can_command(ctx):
-        await ctx.send(f'You must connect yourself to the same channel as {bot.user.name}!')
+        await ctx.send(f'You must connect yourself to the same channel as {g_bot.user.name}!')
         return
 
     if not ctx.voice_client.is_playing():
@@ -253,4 +256,4 @@ async def next(ctx):
 
 # Run bot.
 
-bot.run(g_config['token'])
+g_bot.run(g_config['token'])
