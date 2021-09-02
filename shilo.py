@@ -210,17 +210,18 @@ async def play_current(ctx, playlist, skip=datetime.timedelta()):
 
 
 @g_bot.command(name='start')
-async def start(ctx, playlist_name, restart=False):
+async def start(ctx, playlist_name=None, restart=False):
     if not await join(ctx):
         return
 
-    if playlist_name not in g_playlists:
-        print(f'[WARNING] Playlist "{playlist_name}" doesn\'t exist.')
-        await ctx.send(f'Playlist "{playlist_name}" doesn\'t exist!')
+    auto_name = playlist_name or (g_playlist.name if g_playlist else None)
+    if auto_name not in g_playlists:
+        print(f'[WARNING] Playlist "{auto_name}" doesn\'t exist.')
+        await ctx.send(f'Playlist "{auto_name}" doesn\'t exist!')
         return
-    playlist = g_playlists[playlist_name]
+    playlist = g_playlists[auto_name]
 
-    await ctx.send(f'Playing playlist "{playlist_name}".')
+    await ctx.send(f'Playing playlist "{auto_name}".')
 
     if restart:
         playlist.Restart()
