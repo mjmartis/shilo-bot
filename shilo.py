@@ -1,8 +1,10 @@
 #!/usr/bin/python3
 
+import asyncio
 import datetime
 import discord
 import discord.ext.commands
+import functools
 import glob
 import json
 import os
@@ -73,7 +75,7 @@ class Playlist:
         return self._cur_src
 
     # Move to the next song, reshuffling and starting again if there isn't one.
-    def Next():
+    def Next(self):
         self._index += 1
 
         if self._index >= len(self._fs):
@@ -124,33 +126,25 @@ async def join(ctx):
     if ctx.voice_client and ctx.voice_client.channel == dest.channel:
         return True
 
-    print(f'[INFO] Joining voice channel.')
-
     if ctx.voice_client:
         await ctx.voice_client.disconnect()
 
     await dest.channel.connect()
-    await ctx.send(f'Joined the voice channel {dest.channel.name}.')
+    print(f'[INFO] Joined voice channel "{dest.channel.name}".')
+    await ctx.send(f'Joined the voice channel "{dest.channel.name}".')
     return True
 
-@bot.command(name='start')
-async def start(ctx, playlist_name, restart=False):
-    if not await join(ctx):
-        return
+async def play_next(ctx, playlist):
+    playlist.Next()
+    await play_current(ctx, playlist)
 
-    if playlist_name not in playlists:
-        print(f'[WARNING] Playlist "{playlist_name}" doesn\'t exist.')
-        await ctx.send(f'Playlist "{playlist_name}" doesn\'t exist!')
-        return
-
-    playlist = playlists[playlist_name]
+# Play the current entry from the given playlist over the bot voice channel.
+# Bot must be connected to some voice channel.
+async def play_current(ctx, playlist):
     if not playlist.CurrentName():
         print(f'[WARNING] Tried to play empty playlist "{playlist_name}".')
         await ctx.send(f'Couldn\'t play empty playlist "{playlist_name}"!')
         return
-
-    if restart:
-        playlist.Restart()
 
     stream = await playlist.MakeCurrentStream()
     if not stream:
@@ -161,8 +155,30 @@ async def start(ctx, playlist_name, restart=False):
     print(f'[INFO] Playback started.')
     await ctx.send(f'Playing "{playlist.CurrentName()}".')
 
+    def play_next_coro(in_ctx, in_playlist, error):
+        coro = play_next(in_ctx, in_playlist)
+        fut = asyncio.run_coroutine_threadsafe(coro, ctx.voice_client.loop)
+        fut.result()
+    callback = functools.partial(play_next_coro, ctx, playlist)
+
     ctx.voice_client.stop()
-    ctx.voice_client.play(stream)
+    ctx.voice_client.play(stream, after=callback)
+
+@bot.command(name='start')
+async def start(ctx, playlist_name, restart=False):
+    if not await join(ctx):
+        return
+
+    if playlist_name not in playlists:
+        print(f'[WARNING] Playlist "{playlist_name}" doesn\'t exist.')
+        await ctx.send(f'Playlist "{playlist_name}" doesn\'t exist!')
+        return
+    playlist = playlists[playlist_name]
+
+    if restart:
+        playlist.Restart()
+
+    await play_current(ctx, playlist)
 
 @bot.command(name='restart')
 async def restart(ctx, playlist_name):
