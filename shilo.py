@@ -10,25 +10,24 @@ import os
 import random
 
 CONFIG_FILE = 'shilo.json'
-READ_AUDIO_CHUNK_MS = 20
+READ_AUDIO_CHUNK_TIME = datetime.timedelta(milliseconds=20)
 
 # Wrapper around FFmpegOpusAudio that counts the number of milliseconds
 # streamed so far.
 class ElapsedAudio(discord.FFmpegOpusAudio):
-    def __init__(self, filename, elapsed_ms=0):
+    def __init__(self, filename, elapsed=datetime.timedelta()):
         # TODO: foward args if more sophisticated construction is needed.
-        ss = datetime.timedelta(milliseconds=elapsed_ms)
-        super().__init__(filename, options=f'-ss {str(ss)}')
+        super().__init__(filename, options=f'-ss {str(elapsed)}')
 
-        self._elapsed_ms = elapsed_ms
+        self._elapsed = elapsed
 
     def read(self):
-        self._elapsed_ms += READ_AUDIO_CHUNK_MS
+        self._elapsed += READ_AUDIO_CHUNK_TIME
         return super().read()
 
     @property
-    def elapsed_ms(self):
-        return self._elapsed_ms
+    def elapsed(self):
+        return self._elapsed
 
 def file_stem(path):
     basename = os.path.basename(path)
@@ -61,7 +60,7 @@ class Playlist:
         random.shuffle(self._fs)
         self._index = 0
 
-    # Return the current audio source, or load it if it isn't initialised.
+    # Returns a new stream that plays the track from the position last left off
     # Caller is responsible for cleaning up resources for the returned stream.
     async def MakeCurrentTrackStream(self):
         if self._index >= len(self._fs):
@@ -70,7 +69,7 @@ class Playlist:
         if self._cur_src:
             print(f'[INFO] Resuming "{self.current_track_name}".')
             self._cur_src.cleanup()
-            self._cur_src = ElapsedAudio(self._fs[self._index], self._cur_src.elapsed_ms)
+            self._cur_src = ElapsedAudio(self._fs[self._index], self._cur_src.elapsed)
         else:
             print(f'[INFO] Starting "{self.current_track_name}".')
             self._cur_src = ElapsedAudio(self._fs[self._index])
