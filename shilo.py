@@ -61,15 +61,18 @@ class Playlist:
         self._index = 0
 
     # Returns a new stream that plays the track from the position last left off
+    # by any previous stream. Optionally takes a timedelta to skip further
+    # forward.
+    #
     # Caller is responsible for cleaning up resources for the returned stream.
-    async def MakeCurrentTrackStream(self):
+    async def MakeCurrentTrackStream(self, skip=datetime.timedelta()):
         if self._index >= len(self._fs):
             return None
 
         if self._cur_src:
             print(f'[INFO] Resuming "{self.current_track_name}".')
             self._cur_src.cleanup()
-            self._cur_src = ElapsedAudio(self._fs[self._index], self._cur_src.elapsed)
+            self._cur_src = ElapsedAudio(self._fs[self._index], self._cur_src.elapsed + skip)
         else:
             print(f'[INFO] Starting "{self.current_track_name}".')
             self._cur_src = ElapsedAudio(self._fs[self._index])
@@ -149,7 +152,7 @@ async def join(ctx):
 
 # Play the current entry from the given playlist over the bot voice channel.
 # Bot must be connected to some voice channel.
-async def play_current(ctx, playlist):
+async def play_current(ctx, playlist, skip=datetime.timedelta()):
     global g_playlist
 
     if not playlist.current_track_name:
@@ -157,7 +160,7 @@ async def play_current(ctx, playlist):
         await ctx.send(f'Couldn\'t play empty playlist "{playlist_name}"!')
         return
 
-    stream = await playlist.MakeCurrentTrackStream()
+    stream = await playlist.MakeCurrentTrackStream(skip)
     if not stream:
         print(f'[ERROR] Couldn\'t play "{playlist.current_track_name}".')
         await ctx.send(f'Couldn\'t play "{playlist.current_track_name}"!')
@@ -260,6 +263,51 @@ async def next(ctx):
     # The after-play callback will automatically start playing the next song.
     print(f'[INFO] Skipping to next.')
     ctx.voice_client.stop()
+
+def parse_interval(s):
+    suffix = s.lstrip('0123456789.')
+    unit = suffix.strip().lower()
+    num = float(s[:-len(suffix)].strip())
+
+    INTERVALS = {
+        "s": datetime.timedelta(seconds=1),
+        "sec": datetime.timedelta(seconds=1),
+        "secs": datetime.timedelta(seconds=1),
+        "seconds": datetime.timedelta(seconds=1),
+        "m": datetime.timedelta(minutes=1),
+        "min": datetime.timedelta(minutes=1),
+        "mins": datetime.timedelta(minutes=1),
+        "minutes": datetime.timedelta(minutes=1),
+        "hr": datetime.timedelta(hours=1),
+        "hrs": datetime.timedelta(hours=1),
+        "hours": datetime.timedelta(hours=1),
+    }
+
+    if unit not in INTERVALS:
+        print(f'[WARNING] Couldn\'t parse interval "{s}".')
+        return datetime.timedelta()
+
+    return num * INTERVALS[unit]
+
+@g_bot.command(name='ff')
+async def ff(ctx, interval_str):
+    if not await join(ctx):
+        return
+
+    if not can_command(ctx):
+        await ctx.send(f'You must connect yourself to the same channel as {g_bot.user.name}!')
+        return
+
+    if not ctx.voice_client.is_playing():
+        print(f'[WARNING] Tried to fast-forward with nothing playing.')
+        await ctx.send(f'Nothing to fast-forward!')
+        return
+
+    interval = parse_interval(interval_str)
+
+    print(f'[INFO] Fast-forwarding by {str(interval)}')
+
+    await play_current(ctx, g_playlist, skip=interval)
 
 # Run bot.
 
