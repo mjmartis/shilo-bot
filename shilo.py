@@ -12,6 +12,9 @@ import random
 CONFIG_FILE = 'shilo.json'
 READ_AUDIO_CHUNK_TIME = datetime.timedelta(milliseconds=20)
 
+PRINT_INDEX_WIDTH = 3
+PRINT_TRACK_WIDTH = 40
+
 # Wrapper around FFmpegOpusAudio that counts the number of milliseconds
 # streamed so far.
 class ElapsedAudio(discord.FFmpegOpusAudio):
@@ -89,6 +92,17 @@ class Playlist:
 
         self._cur_src = None
 
+    # Print out a full track listing.
+    def PrintTracks(self):
+        s = f'{self._name}:\n'
+        for i, fn in enumerate(self._fs):
+            num = (str(i+1) + ".").ljust(PRINT_INDEX_WIDTH)
+            track = file_stem(fn).ljust(PRINT_TRACK_WIDTH)
+            marker = ' [<]' if i == self._index else ''
+            s += f'\t{num} {track}{marker}\n'
+
+        return s
+
     @property
     def name(self):
         return self._name
@@ -156,8 +170,8 @@ async def play_current(ctx, playlist, skip=datetime.timedelta()):
     global g_playlist
 
     if not playlist.current_track_name:
-        print(f'[WARNING] Tried to play empty playlist "{playlist_name}".')
-        await ctx.send(f'Couldn\'t play empty playlist "{playlist_name}"!')
+        print(f'[WARNING] Tried to play empty playlist "{playlist.name}".')
+        await ctx.send(f'Couldn\'t play empty playlist "{playlist.name}"!')
         return
 
     stream = await playlist.MakeCurrentTrackStream(skip)
@@ -308,6 +322,41 @@ async def ff(ctx, interval_str):
     print(f'[INFO] Fast-forwarding by {str(interval)}')
 
     await play_current(ctx, g_playlist, skip=interval)
+
+def print_playlists():
+    target_name = g_playlist.name if g_playlist else None
+
+    s = "Playlists:\n"
+    for i, name in enumerate(g_playlists.keys()):
+        num = (str(i+1) + '.').ljust(PRINT_INDEX_WIDTH)
+        title = name.ljust(PRINT_TRACK_WIDTH)
+        marker = ' [<]' if name == target_name else ''
+
+        s += f'\t{num} {title}{marker}\n'
+
+    return s
+
+@g_bot.command(name='list')
+async def list(ctx, playlist_name=None):
+    if not await join(ctx):
+        return
+
+    if not can_command(ctx):
+        await ctx.send(f'You must connect yourself to the same channel as {g_bot.user.name}!')
+        return
+
+    # Print playlist list.
+    if not playlist_name:
+        await ctx.send(print_playlists())
+        return
+
+    # Print specific playlist.
+    if playlist_name not in g_playlists:
+        print('[WARNING] Trying to print non-existent playlist "{playlist_name}".')
+        await ctx.send(f'No playlist "{playlist_name}"!')
+        return
+
+    await ctx.send(g_playlists[playlist_name].PrintTracks())
 
 # Run bot.
 
