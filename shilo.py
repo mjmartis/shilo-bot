@@ -164,9 +164,6 @@ async def play_current(ctx, playlist):
         await ctx.send(f'Couldn\'t play "{playlist.current_track_name}"!')
         return
 
-    print(f'[INFO] Playback started.')
-    await ctx.send(f'Playing "{playlist.current_track_name}".')
-
     def play_next_coro(ctx, playlist, error):
         # Don't continue to next song when this callback has been executed
         # because of e.g. the !stop command.
@@ -182,6 +179,9 @@ async def play_current(ctx, playlist):
     if g_playlist:
         g_playlist.is_stopped = True
     ctx.voice_client.stop()
+
+    print(f'[INFO] Playback started.')
+    await ctx.send(f'Playing "{playlist.current_track_name}".')
 
     playlist.is_stopped = False
     ctx.voice_client.play(stream, after=callback)
