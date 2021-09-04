@@ -55,10 +55,6 @@ def file_stem(path):
 # the current file.
 class Playlist:
     def __init__(self, name, fs):
-        # Public; used by clients to determine when to automatically skip to
-        # the next song.
-        self.is_stopped = False
-
         # Make copy.
         self._name = name
         self._fs = list(fs)
@@ -172,7 +168,7 @@ async def join(ctx):
     if ctx.voice_client:
         # Prevent after-play callback from moving to next song.
         if g_playlist:
-            g_playlist.is_stopped = True
+            g_next_callbacks[g_playlist.name].Cancel()
 
         ctx.voice_client.stop()
         await ctx.voice_client.disconnect()
