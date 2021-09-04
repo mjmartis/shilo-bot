@@ -15,6 +15,21 @@ READ_AUDIO_CHUNK_TIME = datetime.timedelta(milliseconds=20)
 PRINT_INDEX_WIDTH = 3
 PRINT_TRACK_WIDTH = 40
 
+# Helper object holding a callback that can be cancelled.
+class Closure():
+    def __init__(self, callback):
+        self._cancelled = False
+        self._callback = callback
+
+    def Cancel(self):
+        self._cancelled = True
+
+    async def Run(self):
+        if self._cancelled:
+            return
+
+        await self._callback
+
 # Wrapper around FFmpegOpusAudio that counts the number of milliseconds
 # streamed so far.
 class ElapsedAudio(discord.FFmpegOpusAudio):
@@ -122,6 +137,10 @@ for name, globs in g_config['playlists'].items():
     g_playlists[name] = Playlist(name, sum([glob.glob(p) for p in globs], []))
 g_playlist = None
 
+# Store callbacks used to load next songs. Used to cancel them when e.g. the
+# playlist is stopped.
+g_next_callbacks = {}
+
 # Define bot.
 
 g_bot = discord.ext.commands.Bot(command_prefix='!')
@@ -180,33 +199,30 @@ async def play_current(ctx, playlist, skip=datetime.timedelta()):
         await ctx.send(f'Couldn\'t play "{playlist.current_track_name}"!')
         return
 
-    def play_next(ctx, playlist, error):
-        # Don't continue to next song when this callback has been executed
-        # because of e.g. the !stop command.
-        if playlist.is_stopped:
-            return
-
-        playlist.NextTrack()
-
-        # Schedule coroutine.
-        coro = play_current(ctx, playlist)
-        fut = asyncio.run_coroutine_threadsafe(coro, ctx.voice_client.loop)
-        fut.result()
-    callback = lambda e, c=ctx, p=playlist: play_next(c, p, e)
-
     # Needed to stop the after-play callback from starting the next song.
     if g_playlist:
-        g_playlist.is_stopped = True
+        g_next_callbacks[g_playlist.name].Cancel()
     ctx.voice_client.stop()
 
-    print(f'[INFO] Playback started.')
-    await ctx.send(f'Playing "{playlist.current_track_name}".')
+    async def next_track(ctx, playlist):
+        playlist.NextTrack()
 
-    playlist.is_stopped = False
-    ctx.voice_client.play(stream, after=callback)
+        await play_current(ctx, playlist)
+
+        print(f'[INFO] Playback started.')
+        await ctx.send(f'Playing "{playlist.current_track_name}".')
+
+    callback = Closure(next_track(ctx, playlist))
+    def schedule_next_track(callback, error):
+        future = asyncio.run_coroutine_threadsafe(callback.Run(), ctx.voice_client.loop)
+        future.result()
+    after = lambda e, c=callback: schedule_next_track(c, e)
+
+    ctx.voice_client.play(stream, after=after)
 
     # Update for !next, !skip etc.
     g_playlist = playlist
+    g_next_callbacks[playlist.name] = callback
 
 
 @g_bot.command(name='start')
@@ -227,6 +243,9 @@ async def start(ctx, playlist_name=None, restart=False):
         playlist.Restart()
 
     await play_current(ctx, playlist)
+
+    print(f'[INFO] Playback started.')
+    await ctx.send(f'Playing "{playlist.current_track_name}".')
 
 @g_bot.command(name='restart')
 async def restart(ctx, playlist_name=None):
@@ -255,7 +274,7 @@ async def stop(ctx):
         return
 
     # Needed to stop the after-play callback from starting the next song.
-    g_playlist.is_stopped = True
+    g_next_callbacks[g_playlist.name].Cancel()
     ctx.voice_client.stop()
 
     print(f'[INFO] Playback of "{g_playlist.current_track_name}" stopped.')
@@ -325,9 +344,9 @@ async def ff(ctx, interval_str):
         print(f'[WARNING] Cannot fast-forward by bad interval "{interval_str}".')
         return
 
-    print(f'[INFO] Fast-forwarding by {str(interval)}')
-
     await play_current(ctx, g_playlist, skip=interval)
+    print(f'[INFO] Fast-forwarding by {str(interval)}.')
+    await ctx.send(f'Fast-forwarding "{g_playlist.current_track_name}".')
 
 def print_playlists():
     target_name = g_playlist.name if g_playlist else None
