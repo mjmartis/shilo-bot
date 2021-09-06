@@ -195,9 +195,6 @@ async def play_current(ctx, playlist, skip=datetime.timedelta()):
         await ctx.send(f'Couldn\'t play "{playlist.current_track_name}"!')
         return
 
-    # Needed to stop the after-play callback from starting the next song.
-    if g_playlist:
-        g_next_callbacks[g_playlist.name].Cancel()
     ctx.voice_client.stop()
 
     async def next_track(ctx, playlist):
@@ -237,6 +234,10 @@ async def start(ctx, playlist_name=None, restart=False):
 
     if restart:
         playlist.Restart()
+
+    # Race: "next song" callback executes before we've started the new stream.
+    if g_playlist:
+        g_next_callbacks[g_playlist.name].Cancel()
 
     await play_current(ctx, playlist)
 
@@ -330,6 +331,10 @@ async def ff(ctx, interval_str):
         await ctx.send(f'Couldn\'t understand interval "{interval_str}"!')
         print(f'[WARNING] Cannot fast-forward by bad interval "{interval_str}".')
         return
+
+    # Race: "next song" callback executes before we've started the new stream.
+    if g_playlist:
+        g_next_callbacks[g_playlist.name].Cancel()
 
     await play_current(ctx, g_playlist, skip=interval)
     print(f'[INFO] Fast-forwarding by {str(interval)}.')
