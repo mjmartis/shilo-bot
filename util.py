@@ -11,10 +11,10 @@ class CancellableCoroutine():
 
     def Cancel(self):
         self._cancelled = True
+        self._callback.close()
 
     async def Run(self):
         if self._cancelled:
-            self._callback.close()
             return
 
         await self._callback

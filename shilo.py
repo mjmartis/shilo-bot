@@ -65,9 +65,34 @@ async def join(ctx):
 
     await dest.channel.connect()
 
-    print(f'[INFO] Joined voice channel "{dest.channel.name}".')
-    await ctx.send(f'Joined the voice channel "{dest.channel.name}".')
+    print(f'[INFO] Connected to voice channel "{dest.channel.name}".')
+    await ctx.send(f'Connected to the voice channel "{dest.channel.name}".')
     return True
+
+# Leaves the currently-connected channel.
+@g_bot.command(name='leave')
+async def leave(ctx):
+    global g_playlist
+
+    if not ctx.voice_client:
+        await ctx.send(f'No channel connected!')
+        return
+
+    if not can_command(ctx):
+        await ctx.send(f'You must connect yourself to the same channel as {g_bot.user.name}!')
+        return
+
+    # Prevent after-play callback from moving to next song.
+    if g_playlist:
+        g_next_callbacks[g_playlist.name].Cancel()
+    ctx.voice_client.stop()
+
+    await ctx.voice_client.disconnect()
+
+    g_playlist = None
+
+    print(f'[INFO] Disconnected.')
+    await ctx.send(f'Disconnected.')
 
 # Play the current entry from the given playlist over the bot voice channel.
 # Bot must be connected to some voice channel.
@@ -96,10 +121,13 @@ async def play_current(ctx, playlist, skip=datetime.timedelta()):
         await ctx.send(f'Playing "{playlist.current_track_name}".')
 
     callback = util.CancellableCoroutine(next_track(ctx, playlist))
-    def schedule_next_track(callback, error):
+    def schedule_next_track(ctx, callback, error):
+        if not ctx.voice_client:
+            return
+
         future = asyncio.run_coroutine_threadsafe(callback.Run(), ctx.voice_client.loop)
         future.result()
-    after = lambda e, c=callback: schedule_next_track(c, e)
+    after = lambda e, c=ctx, cb=callback: schedule_next_track(c, cb, e)
 
     ctx.voice_client.play(stream, after=after)
 
