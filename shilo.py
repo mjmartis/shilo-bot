@@ -2,125 +2,15 @@
 
 import asyncio
 import datetime
-import discord
-import discord.ext.commands
 import glob
 import json
-import os
-import random
+
+import discord.ext.commands
+
+import util
+import playlist
 
 CONFIG_FILE = 'shilo.json'
-READ_AUDIO_CHUNK_TIME = datetime.timedelta(milliseconds=20)
-
-PRINT_INDEX_WIDTH = 3
-PRINT_TRACK_WIDTH = 40
-
-# Helper object holding a callback that can be cancelled.
-class CancellableCoroutine():
-    def __init__(self, callback):
-        self._cancelled = False
-        self._callback = callback
-
-    def Cancel(self):
-        self._cancelled = True
-
-    async def Run(self):
-        if self._cancelled:
-            self._callback.close()
-            return
-
-        await self._callback
-
-# Wrapper around FFmpegOpusAudio that counts the number of milliseconds
-# streamed so far.
-class ResumedAudio(discord.FFmpegOpusAudio):
-    def __init__(self, filename, elapsed=datetime.timedelta()):
-        # TODO: foward args if more sophisticated construction is needed.
-        super().__init__(filename, before_options=f'-ss {str(elapsed)}')
-
-        self._elapsed = elapsed
-
-    def read(self):
-        self._elapsed += READ_AUDIO_CHUNK_TIME
-        return super().read()
-
-    @property
-    def elapsed(self):
-        return self._elapsed
-
-def file_stem(path):
-    basename = os.path.basename(path)
-    return basename.split('.')[0]
-
-# Maintains a cursor in a list of music files and exposes an audio stream for
-# the current file.
-class Playlist:
-    def __init__(self, name, fs):
-        # Make copy.
-        self._name = name
-        self._fs = list(fs)
-
-        # Populated in Restart.
-        self._index = None
-        self._cur_src = None
-
-        # Start shuffled.
-        self.Restart()
-
-    # Clear current song and reshuffle playlist.
-    def Restart(self):
-        print(f'[INFO] Restarting playlist "{self._name}".')
-
-        self._cur_src = None
-        random.shuffle(self._fs)
-        self._index = 0
-
-    # Returns a new stream that plays the track from the position last left off
-    # by any previous stream. Optionally takes a timedelta to skip further
-    # forward.
-    #
-    # Caller is responsible for cleaning up resources for the returned stream.
-    async def MakeCurrentTrackStream(self, skip=datetime.timedelta()):
-        if self._index >= len(self._fs):
-            return None
-
-        if self._cur_src:
-            print(f'[INFO] Resuming "{self.current_track_name}".')
-            self._cur_src = ResumedAudio(self._fs[self._index], self._cur_src.elapsed + skip)
-        else:
-            print(f'[INFO] Starting "{self.current_track_name}".')
-            self._cur_src = ResumedAudio(self._fs[self._index])
-
-        return self._cur_src
-
-    # Move to the next song, reshuffling and starting again if there isn't one.
-    def NextTrack(self):
-        self._index += 1
-
-        if self._index >= len(self._fs):
-            self.Restart()
-            return
-
-        self._cur_src = None
-
-    # Print out a full track listing.
-    def PrintTracks(self):
-        s = f'{self._name}:\n'
-        for i, fn in enumerate(self._fs):
-            num = (str(i+1) + ".").ljust(PRINT_INDEX_WIDTH)
-            track = file_stem(fn).ljust(PRINT_TRACK_WIDTH)
-            marker = ' [<]' if i == self._index else ''
-            s += f'\t{num} {track}{marker}\n'
-
-        return s
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def current_track_name(self):
-        return file_stem(self._fs[self._index]) if self._fs else None
 
 # Read config.
 
@@ -130,7 +20,7 @@ g_config = json.loads(open(CONFIG_FILE, 'r').read())
 
 g_playlists = {}
 for name, globs in g_config['playlists'].items():
-    g_playlists[name] = Playlist(name, sum([glob.glob(p) for p in globs], []))
+    g_playlists[name] = playlist.Playlist(name, sum([glob.glob(p) for p in globs], []))
 g_playlist = None
 
 # Store callbacks used to load next songs. Used to cancel them when e.g. the
@@ -205,7 +95,7 @@ async def play_current(ctx, playlist, skip=datetime.timedelta()):
         print(f'[INFO] Playback started.')
         await ctx.send(f'Playing "{playlist.current_track_name}".')
 
-    callback = CancellableCoroutine(next_track(ctx, playlist))
+    callback = util.CancellableCoroutine(next_track(ctx, playlist))
     def schedule_next_track(callback, error):
         future = asyncio.run_coroutine_threadsafe(callback.Run(), ctx.voice_client.loop)
         future.result()
@@ -289,32 +179,6 @@ async def next(ctx):
     print(f'[INFO] Skipping to next.')
     ctx.voice_client.stop()
 
-# Basic parsing of human-readable intervals like '1s', '10mins'.
-def parse_interval(s):
-    INTERVALS = {
-        "s": datetime.timedelta(seconds=1),
-        "sec": datetime.timedelta(seconds=1),
-        "secs": datetime.timedelta(seconds=1),
-        "seconds": datetime.timedelta(seconds=1),
-        "m": datetime.timedelta(minutes=1),
-        "min": datetime.timedelta(minutes=1),
-        "mins": datetime.timedelta(minutes=1),
-        "minutes": datetime.timedelta(minutes=1),
-        "hr": datetime.timedelta(hours=1),
-        "hrs": datetime.timedelta(hours=1),
-        "hours": datetime.timedelta(hours=1),
-    }
-
-    try:
-        suffix = s.lstrip('0123456789.')
-        unit = suffix.strip().lower()
-        num = float(s[:-len(suffix)].strip())
-
-        return num * INTERVALS[unit]
-
-    except:
-        return None
-
 @g_bot.command(name='ff')
 async def ff(ctx, interval_str):
     if not can_command(ctx):
@@ -326,7 +190,7 @@ async def ff(ctx, interval_str):
         await ctx.send(f'Nothing to fast-forward!')
         return
 
-    interval = parse_interval(interval_str)
+    interval = util.parse_interval(interval_str)
     if not interval:
         await ctx.send(f'Couldn\'t understand interval "{interval_str}"!')
         print(f'[WARNING] Cannot fast-forward by bad interval "{interval_str}".')
@@ -340,24 +204,12 @@ async def ff(ctx, interval_str):
     print(f'[INFO] Fast-forwarding by {str(interval)}.')
     await ctx.send(f'Fast-forwarding "{g_playlist.current_track_name}".')
 
-def print_playlists():
-    target_name = g_playlist.name if g_playlist else None
-
-    s = "Playlists:\n"
-    for i, name in enumerate(g_playlists.keys()):
-        num = (str(i+1) + '.').ljust(PRINT_INDEX_WIDTH)
-        title = name.ljust(PRINT_TRACK_WIDTH)
-        marker = ' [<]' if name == target_name else ''
-
-        s += f'\t{num} {title}{marker}\n'
-
-    return s
-
 @g_bot.command(name='list')
 async def list(ctx, playlist_name=None):
     # Print playlist list.
     if not playlist_name:
-        await ctx.send(print_playlists())
+        current_name = g_playlist.name if g_playlist else None
+        await ctx.send(playlist.print_playlists(g_playlists, current_name))
         return
 
     # Print specific playlist.
