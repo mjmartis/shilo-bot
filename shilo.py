@@ -142,6 +142,11 @@ async def start(ctx, playlist_name=None, restart=False):
         return
 
     auto_name = playlist_name or (g_playlist.name if g_playlist else None)
+    if not auto_name:
+        print(f'[WARNING] Can\'t start: no playlist specified.')
+        await ctx.send(f'Playlist not specified!')
+        return
+
     if auto_name not in g_playlists:
         print(f'[WARNING] Playlist "{auto_name}" doesn\'t exist.')
         await ctx.send(f'Playlist "{auto_name}" doesn\'t exist!')
