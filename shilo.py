@@ -16,7 +16,7 @@ PRINT_INDEX_WIDTH = 3
 PRINT_TRACK_WIDTH = 40
 
 # Helper object holding a callback that can be cancelled.
-class Closure():
+class CancellableCoroutine():
     def __init__(self, callback):
         self._cancelled = False
         self._callback = callback
@@ -26,13 +26,14 @@ class Closure():
 
     async def Run(self):
         if self._cancelled:
+            self._callback.close()
             return
 
         await self._callback
 
 # Wrapper around FFmpegOpusAudio that counts the number of milliseconds
 # streamed so far.
-class ElapsedAudio(discord.FFmpegOpusAudio):
+class ResumedAudio(discord.FFmpegOpusAudio):
     def __init__(self, filename, elapsed=datetime.timedelta()):
         # TODO: foward args if more sophisticated construction is needed.
         super().__init__(filename, before_options=f'-ss {str(elapsed)}')
@@ -85,10 +86,10 @@ class Playlist:
 
         if self._cur_src:
             print(f'[INFO] Resuming "{self.current_track_name}".')
-            self._cur_src = ElapsedAudio(self._fs[self._index], self._cur_src.elapsed + skip)
+            self._cur_src = ResumedAudio(self._fs[self._index], self._cur_src.elapsed + skip)
         else:
             print(f'[INFO] Starting "{self.current_track_name}".')
-            self._cur_src = ElapsedAudio(self._fs[self._index])
+            self._cur_src = ResumedAudio(self._fs[self._index])
 
         return self._cur_src
 
@@ -207,7 +208,7 @@ async def play_current(ctx, playlist, skip=datetime.timedelta()):
         print(f'[INFO] Playback started.')
         await ctx.send(f'Playing "{playlist.current_track_name}".')
 
-    callback = Closure(next_track(ctx, playlist))
+    callback = CancellableCoroutine(next_track(ctx, playlist))
     def schedule_next_track(callback, error):
         future = asyncio.run_coroutine_threadsafe(callback.Run(), ctx.voice_client.loop)
         future.result()
