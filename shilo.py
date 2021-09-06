@@ -85,7 +85,6 @@ class Playlist:
 
         if self._cur_src:
             print(f'[INFO] Resuming "{self.current_track_name}".')
-            self._cur_src.cleanup()
             self._cur_src = ElapsedAudio(self._fs[self._index], self._cur_src.elapsed + skip)
         else:
             print(f'[INFO] Starting "{self.current_track_name}".')
