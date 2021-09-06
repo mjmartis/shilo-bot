@@ -144,7 +144,7 @@ g_bot = discord.ext.commands.Bot(command_prefix='!')
 # Returns true if the author can command the bot. That is, if the bot is in the
 # same channel as the author.
 def can_command(ctx):
-    return ctx.author.voice and (not ctx.voice_client or
+    return (ctx.author.voice and ctx.voice_client and
            ctx.author.voice.channel == ctx.voice_client.channel)
 
 @g_bot.event
@@ -257,9 +257,6 @@ async def restart(ctx, playlist_name=None):
 async def stop(ctx):
     global g_playlists
 
-    if not await join(ctx):
-        return
-
     if not can_command(ctx):
         await ctx.send(f'You must connect yourself to the same channel as {g_bot.user.name}!')
         return
@@ -278,9 +275,6 @@ async def stop(ctx):
 
 @g_bot.command(name='next')
 async def next(ctx):
-    if not await join(ctx):
-        return
-
     if not can_command(ctx):
         await ctx.send(f'You must connect yourself to the same channel as {g_bot.user.name}!')
         return
@@ -322,9 +316,6 @@ def parse_interval(s):
 
 @g_bot.command(name='ff')
 async def ff(ctx, interval_str):
-    if not await join(ctx):
-        return
-
     if not can_command(ctx):
         await ctx.send(f'You must connect yourself to the same channel as {g_bot.user.name}!')
         return
@@ -359,13 +350,6 @@ def print_playlists():
 
 @g_bot.command(name='list')
 async def list(ctx, playlist_name=None):
-    if not await join(ctx):
-        return
-
-    if not can_command(ctx):
-        await ctx.send(f'You must connect yourself to the same channel as {g_bot.user.name}!')
-        return
-
     # Print playlist list.
     if not playlist_name:
         await ctx.send(print_playlists())
