@@ -12,9 +12,11 @@ READ_AUDIO_CHUNK_TIME = datetime.timedelta(milliseconds=20)
 PRINT_INDEX_WIDTH = 3
 PRINT_TRACK_WIDTH = 40
 
+
 # Wrapper around FFmpegOpusAudio that counts the number of milliseconds
 # streamed so far.
 class ResumedAudio(discord.FFmpegOpusAudio):
+
     def __init__(self, filename, elapsed=datetime.timedelta()):
         # TODO: foward args if more sophisticated construction is needed.
         super().__init__(filename, before_options=f'-ss {str(elapsed)}')
@@ -29,9 +31,11 @@ class ResumedAudio(discord.FFmpegOpusAudio):
     def elapsed(self):
         return self._elapsed
 
+
 # Maintains a cursor in a list of music files and exposes an audio stream for
 # the current file.
 class Playlist:
+
     def __init__(self, name, fs):
         # Make copy.
         self._name = name
@@ -63,7 +67,8 @@ class Playlist:
 
         if self._cur_src:
             print(f'[INFO] Resuming "{self.current_track_name}".')
-            self._cur_src = ResumedAudio(self._fs[self._index], self._cur_src.elapsed + skip)
+            self._cur_src = ResumedAudio(self._fs[self._index],
+                                         self._cur_src.elapsed + skip)
         else:
             print(f'[INFO] Starting "{self.current_track_name}".')
             self._cur_src = ResumedAudio(self._fs[self._index])
@@ -84,7 +89,7 @@ class Playlist:
     def PrintTracks(self):
         s = f'{self._name}:\n'
         for i, fn in enumerate(self._fs):
-            num = (str(i+1) + ".").ljust(PRINT_INDEX_WIDTH)
+            num = (str(i + 1) + ".").ljust(PRINT_INDEX_WIDTH)
             track = util.file_stem(fn).ljust(PRINT_TRACK_WIDTH)
             marker = ' [<]' if i == self._index else ''
             s += f'\t{num} {track}{marker}\n'
@@ -104,7 +109,7 @@ class Playlist:
 def print_playlists(playlists, current_name):
     s = "Playlists:\n"
     for i, name in enumerate(playlists.keys()):
-        num = (str(i+1) + '.').ljust(PRINT_INDEX_WIDTH)
+        num = (str(i + 1) + '.').ljust(PRINT_INDEX_WIDTH)
         title = name.ljust(PRINT_TRACK_WIDTH)
         marker = ' [<]' if name == current_name else ''
 

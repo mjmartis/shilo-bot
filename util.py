@@ -3,8 +3,10 @@
 import datetime
 import os
 
+
 # Helper object holding a callback that can be cancelled.
 class CancellableCoroutine():
+
     def __init__(self, callback):
         self._cancelled = False
         self._callback = callback
@@ -18,6 +20,7 @@ class CancellableCoroutine():
             return
 
         await self._callback
+
 
 # Basic parsing of human-readable intervals like '1s', '10mins'.
 def parse_interval(s):
@@ -44,6 +47,7 @@ def parse_interval(s):
 
     except:
         return None
+
 
 # Returns the basename of the path without any extension.
 def file_stem(path):

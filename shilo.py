@@ -20,7 +20,8 @@ g_config = json.loads(open(CONFIG_FILE, 'r').read())
 
 g_playlists = {}
 for name, globs in g_config['playlists'].items():
-    g_playlists[name] = playlist.Playlist(name, sum([glob.glob(p) for p in globs], []))
+    g_playlists[name] = playlist.Playlist(
+        name, sum([glob.glob(p) for p in globs], []))
 g_playlist = None
 
 # Store callbacks used to load next songs. Used to cancel them when e.g. the
@@ -31,15 +32,18 @@ g_next_callbacks = {}
 
 g_bot = discord.ext.commands.Bot(command_prefix='!')
 
+
 # Returns true if the author can command the bot. That is, if the bot is in the
 # same channel as the author.
 def can_command(ctx):
     return (ctx.author.voice and ctx.voice_client and
-           ctx.author.voice.channel == ctx.voice_client.channel)
+            ctx.author.voice.channel == ctx.voice_client.channel)
+
 
 @g_bot.event
 async def on_ready():
     print(f'[INFO] {g_bot.user.name} connected.')
+
 
 # Returns true if bot successfully joined author's voice channel.
 @g_bot.command(name='join')
@@ -69,6 +73,7 @@ async def join(ctx):
     await ctx.send(f'Connected to the voice channel "{dest.channel.name}".')
     return True
 
+
 # Leaves the currently-connected channel.
 @g_bot.command(name='leave')
 async def leave(ctx):
@@ -79,7 +84,9 @@ async def leave(ctx):
         return
 
     if not can_command(ctx):
-        await ctx.send(f'You must connect yourself to the same channel as {g_bot.user.name}!')
+        await ctx.send(
+            f'You must connect yourself to the same channel as {g_bot.user.name}!'
+        )
         return
 
     # Prevent after-play callback from moving to next song.
@@ -93,6 +100,7 @@ async def leave(ctx):
 
     print(f'[INFO] Disconnected.')
     await ctx.send(f'Disconnected.')
+
 
 # Play the current entry from the given playlist over the bot voice channel.
 # Bot must be connected to some voice channel.
@@ -121,12 +129,15 @@ async def play_current(ctx, playlist, skip=datetime.timedelta()):
         await ctx.send(f'Playing "{playlist.current_track_name}".')
 
     callback = util.CancellableCoroutine(next_track(ctx, playlist))
+
     def schedule_next_track(ctx, callback, error):
         if not ctx.voice_client:
             return
 
-        future = asyncio.run_coroutine_threadsafe(callback.Run(), ctx.voice_client.loop)
+        future = asyncio.run_coroutine_threadsafe(callback.Run(),
+                                                  ctx.voice_client.loop)
         future.result()
+
     after = lambda e, c=ctx, cb=callback: schedule_next_track(c, cb, e)
 
     ctx.voice_client.play(stream, after=after)
@@ -167,6 +178,7 @@ async def start(ctx, playlist_name=None, restart=False):
     print(f'[INFO] Playback started.')
     await ctx.send(f'Playing "{playlist.current_track_name}".')
 
+
 @g_bot.command(name='restart')
 async def restart(ctx, playlist_name=None):
     if not playlist_name and not g_playlist:
@@ -177,12 +189,15 @@ async def restart(ctx, playlist_name=None):
     auto_name = playlist_name or (g_playlist.name if g_playlist else None)
     await start(ctx, auto_name, True)
 
+
 @g_bot.command(name='stop')
 async def stop(ctx):
     global g_playlists
 
     if not can_command(ctx):
-        await ctx.send(f'You must connect yourself to the same channel as {g_bot.user.name}!')
+        await ctx.send(
+            f'You must connect yourself to the same channel as {g_bot.user.name}!'
+        )
         return
 
     if not ctx.voice_client.is_playing():
@@ -197,10 +212,13 @@ async def stop(ctx):
     print(f'[INFO] Playback of "{g_playlist.current_track_name}" stopped.')
     await ctx.send(f'Stopping playlist "{g_playlist.name}".')
 
+
 @g_bot.command(name='next')
 async def next(ctx):
     if not can_command(ctx):
-        await ctx.send(f'You must connect yourself to the same channel as {g_bot.user.name}!')
+        await ctx.send(
+            f'You must connect yourself to the same channel as {g_bot.user.name}!'
+        )
         return
 
     if not ctx.voice_client.is_playing():
@@ -212,10 +230,13 @@ async def next(ctx):
     print(f'[INFO] Skipping to next.')
     ctx.voice_client.stop()
 
+
 @g_bot.command(name='ff')
 async def ff(ctx, interval_str):
     if not can_command(ctx):
-        await ctx.send(f'You must connect yourself to the same channel as {g_bot.user.name}!')
+        await ctx.send(
+            f'You must connect yourself to the same channel as {g_bot.user.name}!'
+        )
         return
 
     if not ctx.voice_client.is_playing():
@@ -226,7 +247,8 @@ async def ff(ctx, interval_str):
     interval = util.parse_interval(interval_str)
     if not interval:
         await ctx.send(f'Couldn\'t understand interval "{interval_str}"!')
-        print(f'[WARNING] Cannot fast-forward by bad interval "{interval_str}".')
+        print(
+            f'[WARNING] Cannot fast-forward by bad interval "{interval_str}".')
         return
 
     # Race: "next song" callback executes before we've started the new stream.
@@ -236,6 +258,7 @@ async def ff(ctx, interval_str):
     await play_current(ctx, g_playlist, skip=interval)
     print(f'[INFO] Fast-forwarding by {str(interval)}.')
     await ctx.send(f'Fast-forwarding "{g_playlist.current_track_name}".')
+
 
 @g_bot.command(name='list')
 async def list(ctx, playlist_name=None):
@@ -247,11 +270,14 @@ async def list(ctx, playlist_name=None):
 
     # Print specific playlist.
     if playlist_name not in g_playlists:
-        print('[WARNING] Trying to print non-existent playlist "{playlist_name}".')
+        print(
+            '[WARNING] Trying to print non-existent playlist "{playlist_name}".'
+        )
         await ctx.send(f'No playlist "{playlist_name}"!')
         return
 
     await ctx.send(g_playlists[playlist_name].PrintTracks())
+
 
 # Run bot.
 
