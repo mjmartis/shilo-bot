@@ -7,6 +7,7 @@ import discord
 
 import util
 
+TARGET_BITRATE = 96
 READ_AUDIO_CHUNK_TIME = datetime.timedelta(milliseconds=20)
 
 PRINT_INDEX_WIDTH = 3
@@ -19,7 +20,10 @@ class ResumedAudio(discord.FFmpegOpusAudio):
 
     def __init__(self, filename, elapsed=datetime.timedelta()):
         # TODO: foward args if more sophisticated construction is needed.
-        super().__init__(filename, before_options=f'-ss {str(elapsed)}')
+        super().__init__(filename,
+                         bitrate=TARGET_BITRATE,
+                         options=f'-bufsize {2*TARGET_BITRATE}k',
+                         before_options=f'-ss {str(elapsed)}')
 
         self._elapsed = elapsed
 
