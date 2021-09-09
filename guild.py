@@ -3,9 +3,7 @@
 import asyncio
 import datetime
 import glob
-#
-#import discord.ext.commands
-#
+
 import util
 import playlist
 
@@ -17,6 +15,8 @@ def _can_command(ctx):
             ctx.author.voice.channel == ctx.voice_client.channel)
 
 
+# Represents the presence of ShiloBot in one guild. This allows for independent
+# playback (e.g. position in playlists) per guild.
 class ShiloGuild:
 
     def __init__(self, playlist_config):
@@ -72,11 +72,13 @@ class ShiloGuild:
             self._next_callbacks[self._playlist.name].Cancel()
         ctx.voice_client.stop()
 
+        print('[INFO] Disconnected from voice channel ' +
+              f'"{ctx.voice_client.channel.name}".')
+
         await ctx.voice_client.disconnect()
 
         self._playlist = None
 
-        print('[INFO] Disconnected.')
         await ctx.send('Disconnected.')
 
     # Start playing the current playlist (or the given playlist).
