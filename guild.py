@@ -194,7 +194,7 @@ class ShiloGuild:
     async def List(self, ctx, playlist_name=None):
         # Print playlist list.
         if not playlist_name:
-            playlist_names = self._playlists.keys()
+            playlist_names = list(self._playlists.keys())
             current_index = playlist_names.index(
                 self._playlist.name) if self._playlist else -1
             table = playlist.print_playlists(playlist_names, current_index)
