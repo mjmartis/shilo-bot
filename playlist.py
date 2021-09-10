@@ -10,8 +10,25 @@ import util
 TARGET_BITRATE = 96
 READ_AUDIO_CHUNK_TIME = datetime.timedelta(milliseconds=20)
 
-PRINT_INDEX_WIDTH = 3
-PRINT_TRACK_WIDTH = 40
+
+# Returns a format string with lines of the form:
+# [1-indexed row number] [entry] [marker]
+#
+# Where marker is a text "arrow" pointing to the specified index.
+def _format_table(entries, index):
+    nums = [str(i + 1) + '.' for i in range(len(entries))]
+    markers = ['[<]' if i == index else '' for i in range(len(entries))]
+
+    padded = []
+    for col in [nums, entries, markers]:
+        max_len = max(len(s) for s in col)
+        padded.append([s.ljust(max_len) for s in col])
+
+    out = ''
+    for row in zip(*padded):
+        out += ' '.join(row) + '\n'
+
+    return out[:-1]
 
 
 # Wrapper around FFmpegOpusAudio that counts the number of milliseconds
@@ -91,14 +108,8 @@ class Playlist:
 
     # Print out a full track listing.
     def PrintTracks(self):
-        s = f'{self._name}:\n'
-        for i, fn in enumerate(self._fs):
-            num = (str(i + 1) + ".").ljust(PRINT_INDEX_WIDTH)
-            track = util.file_stem(fn).ljust(PRINT_TRACK_WIDTH)
-            marker = ' [<]' if i == self._index else ''
-            s += f'\t{num} {track}{marker}\n'
-
-        return s
+        titles = [util.file_stem(fn) for fn in self._fs]
+        return f'{self._name}:\n\n' + _format_table(titles, self._index)
 
     @property
     def name(self):
@@ -109,14 +120,6 @@ class Playlist:
         return util.file_stem(self._fs[self._index]) if self._fs else None
 
 
-# Prints a playlist listing. Puts a cursor next to one "current" playlist.
-def print_playlists(playlists, current_name):
-    s = "Playlists:\n"
-    for i, name in enumerate(playlists.keys()):
-        num = (str(i + 1) + '.').ljust(PRINT_INDEX_WIDTH)
-        title = name.ljust(PRINT_TRACK_WIDTH)
-        marker = ' [<]' if name == current_name else ''
-
-        s += f'\t{num} {title}{marker}\n'
-
-    return s
+# Prints a playlist listing. Puts a cursor next to one "index" playlist.
+def print_playlists(playlists, index):
+    return 'Playlists:\n\n' + _format_table(playlists, index)

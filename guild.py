@@ -194,9 +194,11 @@ class ShiloGuild:
     async def List(self, ctx, playlist_name=None):
         # Print playlist list.
         if not playlist_name:
-            current_name = self._playlist.name if self._playlist else None
-            await ctx.send(
-                playlist.print_playlists(self._playlists, current_name))
+            playlist_names = self._playlists.keys()
+            current_index = playlist_names.index(
+                self._playlist.name) if self._playlist else -1
+            table = playlist.print_playlists(playlist_names, current_index)
+            await ctx.send(f'```\n{table}\n```')
             return
 
         # Print specific playlist.
@@ -206,7 +208,8 @@ class ShiloGuild:
             await ctx.send(f'No playlist "{playlist_name}"!')
             return
 
-        await ctx.send(self._playlists[playlist_name].PrintTracks())
+        await ctx.send(
+            f'```\n{self._playlists[playlist_name].PrintTracks()}\n```')
 
     # Play the current entry from the given playlist over the bot voice channel.
     # Bot must be connected to some voice channel.
