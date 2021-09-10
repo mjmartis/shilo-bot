@@ -105,10 +105,11 @@ class ShiloBot(discord.ext.commands.Bot):
         async def next(ctx):
             await self._EnsureGuild(ctx.guild).Next(ctx)
 
-    def _RegisterFastForward(self):
+    def _RegisterFastForward(self, *args):
 
         @self.command(name='ff')
-        async def ff(ctx, interval_str):
+        async def ff(ctx, *args):
+            interval_str = ' '.join(args)
             await self._EnsureGuild(ctx.guild).FastForward(ctx, interval_str)
 
     def _RegisterList(self):

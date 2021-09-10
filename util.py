@@ -29,13 +29,16 @@ def parse_interval(s):
         "s": datetime.timedelta(seconds=1),
         "sec": datetime.timedelta(seconds=1),
         "secs": datetime.timedelta(seconds=1),
+        "second": datetime.timedelta(seconds=1),
         "seconds": datetime.timedelta(seconds=1),
         "m": datetime.timedelta(minutes=1),
         "min": datetime.timedelta(minutes=1),
         "mins": datetime.timedelta(minutes=1),
+        "minute": datetime.timedelta(minutes=1),
         "minutes": datetime.timedelta(minutes=1),
         "hr": datetime.timedelta(hours=1),
         "hrs": datetime.timedelta(hours=1),
+        "hour": datetime.timedelta(hours=1),
         "hours": datetime.timedelta(hours=1),
     }
 

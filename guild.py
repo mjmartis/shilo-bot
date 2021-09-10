@@ -176,7 +176,7 @@ class ShiloGuild:
         interval = util.parse_interval(interval_str)
         if not interval:
             await ctx.send(f'Couldn\'t understand interval "{interval_str}"!')
-            print('[WARNING] Cannot fast-forward by bad interval' +
+            print('[WARNING] Cannot fast-forward by bad interval ' +
                   f'"{interval_str}".')
             return
 
