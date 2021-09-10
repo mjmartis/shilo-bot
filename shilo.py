@@ -38,7 +38,7 @@ HELP_TABLE = [
     ],
     ['!help ', ' ', 'Shows this message.'],
 ]
-HELP_WIDTH = 25
+HELP_WIDTH = 27
 
 
 # The top-level bot. Responsible for creating independent presences in
