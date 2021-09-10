@@ -5,8 +5,40 @@ import json
 import discord.ext.commands
 
 import guild
+import util
 
 CONFIG_FILE = 'shilo.json'
+
+# Strings for the bot help message.
+HELP_MESSAGE = 'I am a renowned bard, here to play shuffled music to suit your mood.\n'
+HELP_TABLE = [
+    ['!join ', ' ', 'Joins the voice channel that you\'re currently in.\n'],
+    ['!leave ', ' ', 'Leaves the current voice channel.\n'],
+    [
+        '!start ', '[playlist name] ',
+        'Starts the given playlist where it left off, ' +
+        'or the last-played playlist if no playlist is given.\n'
+    ],
+    [
+        '!restart ', '[playlist name] ', 'Starts the given playlist again, ' +
+        'or the last-played playlist if no playlist is given.\n'
+    ],
+    ['!stop ', ' ', 'Stops current playback.\n'],
+    ['!next ', ' ', 'Skips to the next track in the current playlist.\n'],
+    [
+        '!ff ', 'interval ',
+        'Fast-forwards the current track by the interval given. ' +
+        'The interval should be a string of similar form to "1s", "2 min" ' +
+        'or "3minutes".\n'
+    ],
+    [
+        '!list ', '[playlist name] ',
+        'Prints a track listing of the given playlist, ' +
+        'or the listing of all playlists if no playlist is given.\n'
+    ],
+    ['!help ', ' ', 'Shows this message.'],
+]
+HELP_WIDTH = 25
 
 
 # The top-level bot. Responsible for creating independent presences in
@@ -14,7 +46,7 @@ CONFIG_FILE = 'shilo.json'
 class ShiloBot(discord.ext.commands.Bot):
 
     def __init__(self, playlist_config):
-        super().__init__(command_prefix='!')
+        super().__init__(command_prefix='!', help_command=None)
 
         self._playlist_config = playlist_config
         self._guilds = {}
@@ -23,11 +55,13 @@ class ShiloBot(discord.ext.commands.Bot):
         self._RegisterJoin()
         self._RegisterLeave()
         self._RegisterStart()
-        self._RegisterStop()
         self._RegisterRestart()
+        self._RegisterStop()
         self._RegisterNext()
         self._RegisterFastForward()
         self._RegisterList()
+        self._RegisterHelp()
+        self._RegisterCommandError()
 
     def _RegisterOnReady(self):
 
@@ -82,6 +116,24 @@ class ShiloBot(discord.ext.commands.Bot):
         @self.command(name='list')
         async def list(ctx, playlist_name=None):
             await self._EnsureGuild(ctx.guild).List(ctx, playlist_name)
+
+    def _RegisterHelp(self):
+
+        @self.command(name='help')
+        async def help(ctx):
+            print('[INFO] Printing help.')
+            await ctx.send(f'{HELP_MESSAGE}\n' +
+                           f'```{util.format_table(HELP_TABLE, HELP_WIDTH)}```')
+
+    def _RegisterCommandError(self):
+
+        @self.event
+        async def on_command_error(ctx, error):
+            print(f'[WARNING] Bad command "{ctx.invoked_with}" received. ' +
+                  f'Failed with "{error}".')
+            await ctx.send(
+                f'Couldn\'t understand command "{ctx.invoked_with}"! ' +
+                'Use !help for instructions.')
 
     # Retrieve the object for the given guild, creating a new one if necessary.
     def _EnsureGuild(self, g):

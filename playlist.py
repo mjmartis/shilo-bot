@@ -15,20 +15,11 @@ READ_AUDIO_CHUNK_TIME = datetime.timedelta(milliseconds=20)
 # [1-indexed row number] [entry] [marker]
 #
 # Where marker is a text "arrow" pointing to the specified index.
-def _format_table(entries, index):
+def _format_listing(entries, index):
     nums = [str(i + 1) + '.' for i in range(len(entries))]
     markers = ['[<]' if i == index else '' for i in range(len(entries))]
 
-    padded = []
-    for col in [nums, entries, markers]:
-        max_len = max(len(s) for s in col)
-        padded.append([s.ljust(max_len) for s in col])
-
-    out = ''
-    for row in zip(*padded):
-        out += ' '.join(row) + '\n'
-
-    return out[:-1]
+    return util.format_table(zip(*[nums, entries, markers]))
 
 
 # Wrapper around FFmpegOpusAudio that counts the number of milliseconds
@@ -109,7 +100,7 @@ class Playlist:
     # Print out a full track listing.
     def PrintTracks(self):
         titles = [util.file_stem(fn) for fn in self._fs]
-        return f'{self._name}:\n\n' + _format_table(titles, self._index)
+        return f'{self._name}:\n\n' + _format_listing(titles, self._index)
 
     @property
     def name(self):
@@ -122,4 +113,4 @@ class Playlist:
 
 # Prints a playlist listing. Puts a cursor next to one "index" playlist.
 def print_playlists(playlists, index):
-    return 'Playlists:\n\n' + _format_table(playlists, index)
+    return 'Playlists:\n\n' + _format_listing(playlists, index)
