@@ -219,9 +219,9 @@ class ShiloGuild:
 
         # Nothing to do if:
         #   1) We aren't connected to a voice channel, or
-        #   2) The member isn't leaving a voice channel, or
-        #   3) The user is leaving a different voice channel.
-        if not bot_channel or after.channel or before.channel != bot_channel:
+        #   2) The user isn't leaving our channel.
+        if (not bot_channel or before.channel != bot_channel or
+                after.channel == bot_channel):
             return
 
         # Only leave if there are no users left.
