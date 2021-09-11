@@ -79,10 +79,10 @@ class ShiloBot(discord.ext.commands.Bot):
                 return
             guild = before.channel.guild
 
+            # Get the bot's voice client for the right guild.
             vcs = (vc for vc in self.voice_clients if vc.guild == guild)
             bot_vc = next(vcs, None)
             if not bot_vc:
-                print('[ERROR] No voice client for guild!')
                 return
 
             await self._EnsureGuild(guild).OnVoiceStateUpdate(
