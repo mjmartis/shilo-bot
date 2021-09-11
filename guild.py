@@ -52,6 +52,9 @@ class ShiloGuild:
 
         await dest.channel.connect()
 
+        # Deafen the bot to assure users they aren't being eavesdropped on.
+        await ctx.guild.change_voice_state(channel=dest.channel, self_deaf=True)
+
         print(f'[INFO] Connected to voice channel "{dest.channel.name}".')
         await ctx.send(f'Connected to the voice channel "{dest.channel.name}".')
         return True
