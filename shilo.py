@@ -52,6 +52,7 @@ class ShiloBot(discord.ext.commands.Bot):
         self._guilds = {}
 
         self._RegisterOnReady()
+        self._RegisterOnVoiceStateUpdate()
         self._RegisterJoin()
         self._RegisterLeave()
         self._RegisterStart()
@@ -68,6 +69,24 @@ class ShiloBot(discord.ext.commands.Bot):
         @self.event
         async def on_ready():
             print(f'[INFO] {self.user.name} connected.')
+
+    def _RegisterOnVoiceStateUpdate(self):
+
+        @self.event
+        async def on_voice_state_update(member, before, after):
+            # Find the right guild to which to forward the message.
+            if member.bot or not before.channel:
+                return
+            guild = before.channel.guild
+
+            vcs = (vc for vc in self.voice_clients if vc.guild == guild)
+            bot_vc = next(vcs, None)
+            if not bot_vc:
+                print('[ERROR] No voice client for guild!')
+                return
+
+            await self._EnsureGuild(guild).OnVoiceStateUpdate(
+                bot_vc, before, after)
 
     def _RegisterJoin(self):
 

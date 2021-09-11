@@ -74,13 +74,12 @@ class ShiloGuild:
         if self._playlist:
             self._next_callbacks[self._playlist.name].Cancel()
         ctx.voice_client.stop()
+        self._playlist = None
 
         print('[INFO] Disconnected from voice channel ' +
               f'"{ctx.voice_client.channel.name}".')
 
         await ctx.voice_client.disconnect()
-
-        self._playlist = None
 
         await ctx.send('Disconnected.')
 
@@ -213,6 +212,32 @@ class ShiloGuild:
 
         await ctx.send(
             f'```\n{self._playlists[playlist_name].TrackListing()}\n```')
+
+    # Leave the voice channel once everyone else has.
+    async def OnVoiceStateUpdate(self, bot_voice_client, before, after):
+        bot_channel = bot_voice_client.channel
+
+        # Nothing to do if:
+        #   1) We aren't connected to a voice channel, or
+        #   2) The member isn't leaving a voice channel, or
+        #   3) The user is leaving a different voice channel.
+        if not bot_channel or after.channel or before.channel != bot_channel:
+            return
+
+        # Only leave if there are no users left.
+        if [m for m in bot_channel.members if not m.bot]:
+            return
+
+        # Prevent after-play callback from moving to next song.
+        if self._playlist:
+            self._next_callbacks[self._playlist.name].Cancel()
+        bot_voice_client.stop()
+        self._playlist = None
+
+        print('[INFO] Disconnected from empty voice channel ' +
+              f'"{bot_channel.name}".')
+
+        await bot_voice_client.disconnect()
 
     # Play the current entry from the given playlist over the bot voice channel.
     # Bot must be connected to some voice channel.
