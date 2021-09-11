@@ -197,7 +197,7 @@ class ShiloGuild:
             playlist_names = list(self._playlists.keys())
             current_index = playlist_names.index(
                 self._playlist.name) if self._playlist else -1
-            table = playlist.print_playlists(playlist_names, current_index)
+            table = playlist.playlist_listing(playlist_names, current_index)
             await ctx.send(f'```\n{table}\n```')
             return
 
@@ -209,7 +209,7 @@ class ShiloGuild:
             return
 
         await ctx.send(
-            f'```\n{self._playlists[playlist_name].PrintTracks()}\n```')
+            f'```\n{self._playlists[playlist_name].TrackListing()}\n```')
 
     # Play the current entry from the given playlist over the bot voice channel.
     # Bot must be connected to some voice channel.

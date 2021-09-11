@@ -103,4 +103,4 @@ def format_table(table, wrap_width=80):
         padded_table_t.append(padded_col)
 
     # Join padded entries into row strings, then row strings into an output string.
-    return '\n'.join(' '.join(row) for row in zip(*padded_table_t))
+    return '\n'.join('\t'.join(row) for row in zip(*padded_table_t))

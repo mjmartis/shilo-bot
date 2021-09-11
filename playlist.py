@@ -97,8 +97,9 @@ class Playlist:
 
         self._cur_src = None
 
-    # Print out a full track listing.
-    def PrintTracks(self):
+    # Returns a full track listing with a cursor next to the currently-playing
+    # track.
+    def TrackListing(self):
         titles = [util.file_stem(fn) for fn in self._fs]
         return f'{self._name}:\n\n' + _format_listing(titles, self._index)
 
@@ -111,6 +112,6 @@ class Playlist:
         return util.file_stem(self._fs[self._index]) if self._fs else None
 
 
-# Prints a playlist listing. Puts a cursor next to one "index" playlist.
-def print_playlists(playlists, index):
+# Resturns a playlist listing. Puts a cursor next to one "index" playlist.
+def playlist_listing(playlists, index):
     return 'Playlists:\n\n' + _format_listing(playlists, index)

@@ -12,33 +12,33 @@ CONFIG_FILE = 'shilo.json'
 # Strings for the bot help message.
 HELP_MESSAGE = 'I am a renowned bard, here to play shuffled music to suit your mood.\n'
 HELP_TABLE = [
-    ['!join ', ' ', 'Joins the voice channel that you\'re currently in.\n'],
-    ['!leave ', ' ', 'Leaves the current voice channel.\n'],
+    ['!join', '', 'Joins the voice channel that you\'re currently in.\n'],
+    ['!leave', '', 'Leaves the current voice channel.\n'],
     [
-        '!start ', '[playlist name] ',
+        '!start', '[playlist name]',
         'Starts the given playlist where it left off, ' +
         'or the last-played playlist if no playlist is given.\n'
     ],
     [
-        '!restart ', '[playlist name] ', 'Starts the given playlist again, ' +
+        '!restart', '[playlist name]', 'Starts the given playlist again, ' +
         'or the last-played playlist if no playlist is given.\n'
     ],
-    ['!stop ', ' ', 'Stops current playback.\n'],
-    ['!next ', ' ', 'Skips to the next track in the current playlist.\n'],
+    ['!stop', '', 'Stops current playback.\n'],
+    ['!next', '', 'Skips to the next track in the current playlist.\n'],
     [
-        '!ff ', 'interval ',
+        '!ff', 'interval',
         'Fast-forwards the current track by the interval given. ' +
         'The interval should be a string of similar form to "1s", "2 min" ' +
         'or "3minutes".\n'
     ],
     [
-        '!list ', '[playlist name] ',
+        '!list', '[playlist name]',
         'Prints a track listing of the given playlist, ' +
         'or the listing of all playlists if no playlist is given.\n'
     ],
-    ['!help ', ' ', 'Shows this message.'],
+    ['!help', '', 'Shows this message.'],
 ]
-HELP_WIDTH = 27
+HELP_WIDTH = 40
 
 
 # The top-level bot. Responsible for creating independent presences in
