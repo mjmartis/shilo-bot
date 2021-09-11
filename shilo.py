@@ -149,11 +149,17 @@ class ShiloBot(discord.ext.commands.Bot):
 
         @self.event
         async def on_command_error(ctx, error):
-            print(f'[WARNING] Bad command "{ctx.invoked_with}" received. ' +
-                  f'Failed with "{error}".')
-            await ctx.send(
-                f'Couldn\'t understand command "{ctx.invoked_with}"! ' +
-                'Use !help for instructions.')
+            # Benign error: unknown command.
+            if isinstance(error, discord.ext.commands.errors.CommandNotFound):
+                await ctx.send(
+                    f'Couldn\'t understand command "{ctx.invoked_with}"! ' +
+                    'Use !help for instructions.')
+                print(f'[WARNING] Bad command "{ctx.invoked_with}" received.')
+                return
+
+            # Otherwise, an unexpected error while running a command.
+            await ctx.send('Command failed! Internal error.')
+            print(f'[Error] Internal error: "{error}".')
 
     # Retrieve the object for the given guild, creating a new one if necessary.
     def _EnsureGuild(self, g):
