@@ -43,12 +43,7 @@ class ShiloGuild:
             return True
 
         if ctx.voice_client:
-            # Prevent after-play callback from moving to next song.
-            if self._playlist:
-                self._next_callbacks[self._playlist.name].Cancel()
-
-            ctx.voice_client.stop()
-            await ctx.voice_client.disconnect()
+            await self._Disconnect(ctx.voice_client)
 
         await dest.channel.connect()
 
@@ -70,16 +65,10 @@ class ShiloGuild:
                            f'as {ctx.bot.user.name}!')
             return
 
-        # Prevent after-play callback from moving to next song.
-        if self._playlist:
-            self._next_callbacks[self._playlist.name].Cancel()
-        ctx.voice_client.stop()
-        self._playlist = None
-
         print('[INFO] Disconnected from voice channel ' +
               f'"{ctx.voice_client.channel.name}".')
 
-        await ctx.voice_client.disconnect()
+        await self._Disconnect(ctx.voice_client)
 
         await ctx.send('Disconnected.')
 
@@ -228,16 +217,10 @@ class ShiloGuild:
         if [m for m in bot_channel.members if not m.bot]:
             return
 
-        # Prevent after-play callback from moving to next song.
-        if self._playlist:
-            self._next_callbacks[self._playlist.name].Cancel()
-        bot_voice_client.stop()
-        self._playlist = None
-
         print('[INFO] Disconnected from empty voice channel ' +
               f'"{bot_channel.name}".')
 
-        await bot_voice_client.disconnect()
+        await self._Disconnect(bot_voice_client)
 
     # Play the current entry from the given playlist over the bot voice channel.
     # Bot must be connected to some voice channel.
@@ -281,3 +264,12 @@ class ShiloGuild:
 
         print('[INFO] Playback started.')
         await ctx.send(f'Playing "{playlist.current_track_name}".')
+
+    # Stop the currently playing song and de-select the current playlist.
+    async def _Disconnect(self, voice_client):
+        if self._playlist:
+            self._next_callbacks[self._playlist.name].Cancel()
+        voice_client.stop()
+        self._playlist = None
+
+        await voice_client.disconnect()
