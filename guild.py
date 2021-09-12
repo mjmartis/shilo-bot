@@ -99,10 +99,11 @@ class ShiloGuild:
         if self._playlist:
             self._next_callbacks[self._playlist.name].Cancel()
 
-        await self._PlayCurrent(ctx, playlist)
+        played = await self._PlayCurrent(ctx, playlist)
 
-        print('[INFO] Playback started.')
-        await ctx.send(f'Playing "{playlist.current_track_name}".')
+        if played:
+            print('[INFO] Playback started.')
+            await ctx.send(f'Playing "{playlist.current_track_name}".')
 
     # Restart the current (or a given) playlist.
     async def Restart(self, ctx, playlist_name=None):
@@ -175,11 +176,12 @@ class ShiloGuild:
         if self._playlist:
             self._next_callbacks[self._playlist.name].Cancel()
 
-        await self._PlayCurrent(ctx, self._playlist, skip=interval)
+        played = await self._PlayCurrent(ctx, self._playlist, skip=interval)
 
-        print(f'[INFO] Fast-forwarding by {str(interval)}.')
-        await ctx.send('Fast-forwarding ' +
-                       f'"{self._playlist.current_track_name}".')
+        if played:
+            print(f'[INFO] Fast-forwarding by {str(interval)}.')
+            await ctx.send('Fast-forwarding ' +
+                           f'"{self._playlist.current_track_name}".')
 
     # List playlists or the tracks in an individual playlist.
     async def List(self, ctx, playlist_name=None):
@@ -228,13 +230,13 @@ class ShiloGuild:
         if not playlist.current_track_name:
             print(f'[WARNING] Tried to play empty playlist "{playlist.name}".')
             await ctx.send(f'Couldn\'t play empty playlist "{playlist.name}"!')
-            return
+            return False
 
         stream = await playlist.MakeCurrentTrackStream(skip)
         if not stream:
             print(f'[ERROR] Couldn\'t play "{playlist.current_track_name}".')
             await ctx.send(f'Couldn\'t play "{playlist.current_track_name}"!')
-            return
+            return False
 
         ctx.voice_client.stop()
 
@@ -256,14 +258,17 @@ class ShiloGuild:
         self._playlist = playlist
         self._next_callbacks[playlist.name] = callback
 
+        return True
+
     # Play the next track of the given playlist.
     async def _NextTrack(self, ctx, playlist):
         playlist.NextTrack()
 
-        await self._PlayCurrent(ctx, playlist)
+        played = await self._PlayCurrent(ctx, playlist)
 
-        print('[INFO] Playback started.')
-        await ctx.send(f'Playing "{playlist.current_track_name}".')
+        if played:
+            print('[INFO] Playback started.')
+            await ctx.send(f'Playing "{playlist.current_track_name}".')
 
     # Stop the currently playing song and de-select the current playlist.
     async def _Disconnect(self, voice_client):
