@@ -71,16 +71,11 @@ def format_table(table, wrap_width=80):
 
         # Step 1: split each entry into a list of lines.
         for entry in row:
-            wrapped_entry = textwrap.wrap(entry,
-                                          wrap_width,
-                                          replace_whitespace=False,
-                                          drop_whitespace=False)
+            wrapped_entry = textwrap.wrap(
+                entry, wrap_width, replace_whitespace=False) or ['']
 
             # Manually ensure every new line is a separate entry in the list.
-            wrapped_entries = sum([l.split('\n') for l in wrapped_entry], [])
-
-            # Remove possible leading whitespace after '\n'.
-            wrapped_row.append([e.lstrip() for e in wrapped_entries])
+            wrapped_row.append(sum([l.split('\n') for l in wrapped_entry], []))
 
         # Step 2: pad each entry to be the same number of lines.
         max_lines = max(len(entry) for entry in wrapped_row)

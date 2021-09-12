@@ -10,32 +10,40 @@ import util
 CONFIG_FILE = 'shilo.json'
 
 # Strings for the bot help message.
-HELP_MESSAGE = 'I am a renowned bard, here to play shuffled music to suit your mood.\n'
+HELP_MESSAGE = 'I am a renowned bard, here to play shuffled music to suit your mood.'
 HELP_TABLE = [
-    ['!join', '', 'Joins the voice channel that you\'re currently in.\n'],
-    ['!leave', '', 'Leaves the current voice channel.\n'],
+    ['!join', '', 'Joins the voice channel that you\'re currently in.'],
+    ['', '', ''],
+    ['!leave', '', 'Leaves the current voice channel.'],
+    ['', '', ''],
     [
         '!start', '[playlist name]',
         'Starts the given playlist where it left off, ' +
-        'or the last-played playlist if no playlist is given.\n'
+        'or the last-played playlist if no playlist is given.'
     ],
+    ['', '', ''],
     [
         '!restart', '[playlist name]', 'Starts the given playlist again, ' +
-        'or the last-played playlist if no playlist is given.\n'
+        'or the last-played playlist if no playlist is given.'
     ],
-    ['!stop', '', 'Stops current playback.\n'],
-    ['!next', '', 'Skips to the next track in the current playlist.\n'],
+    ['', '', ''],
+    ['!stop', '', 'Stops current playback.'],
+    ['', '', ''],
+    ['!next', '', 'Skips to the next track in the current playlist.'],
+    ['', '', ''],
     [
         '!ff', 'interval',
         'Fast-forwards the current track by the interval given. ' +
         'The interval should be a string of similar form to "1s", "2 min" ' +
-        'or "3minutes".\n'
+        'or "3minutes".'
     ],
+    ['', '', ''],
     [
         '!list', '[playlist name]',
         'Prints a track listing of the given playlist, ' +
-        'or the listing of all playlists if no playlist is given.\n'
+        'or the listing of all playlists if no playlist is given.'
     ],
+    ['', '', ''],
     ['!help', '', 'Shows this message.'],
 ]
 HELP_WIDTH = 40
