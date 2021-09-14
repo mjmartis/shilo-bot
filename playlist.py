@@ -62,7 +62,7 @@ class Playlist:
 
     # Clear current song and reshuffle playlist.
     def Restart(self):
-        print(f'[INFO] Restarting playlist "{self._name}".')
+        util.log(util.LogSeverity.INFO, f'Restarting playlist "{self._name}".')
 
         self._cur_src = None
         random.shuffle(self._fs)
@@ -78,11 +78,13 @@ class Playlist:
             return None
 
         if self._cur_src:
-            print(f'[INFO] Resuming "{self.current_track_name}".')
+            util.log(util.LogSeverity.INFO,
+                     f'Resuming "{self.current_track_name}".')
             self._cur_src = ResumedAudio(self._fs[self._index],
                                          self._cur_src.elapsed + skip)
         else:
-            print(f'[INFO] Starting "{self.current_track_name}".')
+            util.log(util.LogSeverity.INFO,
+                     f'Starting "{self.current_track_name}".')
             self._cur_src = ResumedAudio(self._fs[self._index])
 
         return self._cur_src

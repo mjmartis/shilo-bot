@@ -76,7 +76,7 @@ class ShiloBot(discord.ext.commands.Bot):
 
         @self.event
         async def on_ready():
-            print(f'[INFO] {self.user.name} connected.')
+            util.log(util.LogSeverity.INFO, f'{self.user.name} connected.')
 
     def _RegisterOnVoiceStateUpdate(self):
 
@@ -149,7 +149,7 @@ class ShiloBot(discord.ext.commands.Bot):
 
         @self.command(name='help')
         async def help(ctx):
-            print('[INFO] Printing help.')
+            util.log(util.LogSeverity.INFO, 'Printing help.')
             await ctx.send(f'{HELP_MESSAGE}\n' +
                            f'```{util.format_table(HELP_TABLE, HELP_WIDTH)}```')
 
@@ -162,18 +162,20 @@ class ShiloBot(discord.ext.commands.Bot):
                 await ctx.send(
                     f'Couldn\'t understand command "{ctx.invoked_with}"! ' +
                     'Use !help for instructions.')
-                print(f'[WARNING] Bad command "{ctx.invoked_with}" received.')
+                util.log(util.LogSeverity.WARNING,
+                         f'Bad command "{ctx.invoked_with}" received.')
                 return
 
             # Otherwise, an unexpected error while running a command.
             await ctx.send('Command failed! Internal error.')
-            print(f'[Error] Internal error: "{error}".')
+            util.log(util.LogSeverity.ERROR, f'Internal error: "{error}".')
 
     # Retrieve the object for the given guild, creating a new one if necessary.
     def _EnsureGuild(self, g):
         if g.id not in self._guilds:
             self._guilds[g.id] = guild.ShiloGuild(self._playlist_config)
-            print(f'[INFO] Initialising for guild "{g.name}".')
+            util.log(util.LogSeverity.INFO,
+                     f'Initialising for guild "{g.name}".')
 
         return self._guilds[g.id]
 
@@ -182,7 +184,7 @@ def main():
     config = json.loads(open(CONFIG_FILE, 'r').read())
     bot = ShiloBot(config['playlists'])
 
-    print('[INFO] Connecting to Discord.')
+    util.log(util.LogSeverity.INFO, 'Connecting to Discord.')
     bot.run(config['token'])
 
 

@@ -1,8 +1,24 @@
 #!/usr/bin/python3
 
 import datetime
+import enum
 import os
 import textwrap
+
+
+# Used to signal the severity of a message, which could lead to different
+# logging behaviour (e.g. a stack trace) in the future.
+class LogSeverity(enum.Enum):
+    INFO = 1
+    WARNING = 2
+    ERROR = 3
+    FATAL = 4
+
+
+# Prints a message to stdout along with the time and an indicator of severity.
+def log(severity, message):
+    time_str = datetime.datetime.now().strftime('%Y-%m-%d %X')
+    print(f'{time_str} [{severity.name}] {message}')
 
 
 # Helper object holding a callback that can be cancelled.
