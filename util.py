@@ -18,7 +18,7 @@ class LogSeverity(enum.Enum):
 # Prints a message to stdout along with the time and an indicator of severity.
 def log(severity, message):
     time_str = datetime.datetime.now().strftime('%Y-%m-%d %X')
-    print(f'{time_str} [{severity.name}] {message}')
+    print(f'{time_str} [{severity.name}] {message}', flush=True)
 
 
 # Helper object holding a callback that can be cancelled.
