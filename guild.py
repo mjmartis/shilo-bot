@@ -77,20 +77,19 @@ class ShiloGuild:
         if not await self.Join(ctx):
             return
 
-        auto_name = playlist_name or (self._playlist.name
-                                      if self._playlist else None)
-        if not auto_name:
+        resolved_name = playlist_name or self._playlist and self._playlist.name
+        if not resolved_name:
             print('[WARNING] Can\'t start: no playlist specified.')
             await ctx.send('Playlist not specified!')
             return
 
-        if auto_name not in self._playlists:
-            print(f'[WARNING] Playlist "{auto_name}" doesn\'t exist.')
-            await ctx.send(f'Playlist "{auto_name}" doesn\'t exist!')
+        if resolved_name not in self._playlists:
+            print(f'[WARNING] Playlist "{resolved_name}" doesn\'t exist.')
+            await ctx.send(f'Playlist "{resolved_name}" doesn\'t exist!')
             return
-        playlist = self._playlists[auto_name]
+        playlist = self._playlists[resolved_name]
 
-        await ctx.send(f'Playing playlist "{auto_name}".')
+        await ctx.send(f'Playing playlist "{resolved_name}".')
 
         if restart:
             playlist.Restart()
@@ -113,9 +112,8 @@ class ShiloGuild:
             await ctx.send('No playlist to restart!')
             return
 
-        auto_name = playlist_name or (self._playlist.name
-                                      if self._playlist else None)
-        await self.Start(ctx, auto_name, True)
+        resolved_name = playlist_name or self._playlist and self._playlist.name
+        await self.Start(ctx, resolved_name, True)
 
     # Stop the currently-playing playlist.
     async def Stop(self, ctx):
@@ -188,8 +186,8 @@ class ShiloGuild:
         # Print playlist list.
         if not playlist_name:
             playlist_names = list(self._playlists.keys())
-            current_index = playlist_names.index(
-                self._playlist.name) if self._playlist else -1
+            current_index = self._playlist and playlist_names.index(
+                self._playlist.name) or -1
             table = playlist.playlist_listing(playlist_names, current_index)
             await ctx.send(f'```\n{table}\n```')
             return
@@ -270,7 +268,8 @@ class ShiloGuild:
             print('[INFO] Playback started.')
             await ctx.send(f'Playing "{playlist.current_track_name}".')
 
-    # Stop the currently playing song and de-select the current playlist.
+    # Stop the currently playing song, de-select the current playlist and
+    # disconnect from the current voice channel.
     async def _Disconnect(self, voice_client):
         if self._playlist:
             self._next_callbacks[self._playlist.name].Cancel()

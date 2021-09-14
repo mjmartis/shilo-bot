@@ -109,7 +109,7 @@ class Playlist:
 
     @property
     def current_track_name(self):
-        return util.file_stem(self._fs[self._index]) if self._fs else None
+        return self._fs and util.file_stem(self._fs[self._index])
 
 
 # Resturns a playlist listing. Puts a cursor next to one "index" playlist.
