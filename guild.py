@@ -201,8 +201,8 @@ class ShiloGuild:
         # Print playlist list.
         if not playlist_name:
             playlist_names = list(self._playlists.keys())
-            current_index = self._playlist and playlist_names.index(
-                self._playlist.name) or -1
+            current_index = playlist_names.index(
+                self._playlist.name) if self._playlist else -1
             table = playlist.playlist_listing(playlist_names, current_index)
             await ctx.send(f'```\n{table}\n```')
             return
