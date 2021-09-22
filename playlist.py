@@ -1,7 +1,9 @@
 #!/usr/bin/python3
 
 import datetime
+import sys
 import random
+import tempfile
 
 import discord
 
@@ -27,9 +29,17 @@ def _format_listing(entries, index):
 class ResumedAudio(discord.FFmpegOpusAudio):
 
     def __init__(self, filename, elapsed=datetime.timedelta()):
+        # For error reporting.
+        self._filename = util.file_stem(filename)
+        # To capture ffmpeg error output.
+        self._stderr = tempfile.TemporaryFile('a+b')
+        # Final error status. Used once _stderr has been cleaned up.
+        self._final_error = None
+
         # TODO: foward args if more sophisticated construction is needed.
         super().__init__(filename,
                          bitrate=TARGET_BITRATE,
+                         stderr=self._stderr,
                          options=f'-bufsize {2*TARGET_BITRATE}k',
                          before_options=f'-ss {str(elapsed)}')
 
@@ -38,6 +48,33 @@ class ResumedAudio(discord.FFmpegOpusAudio):
     def read(self):
         self._elapsed += READ_AUDIO_CHUNK_TIME
         return super().read()
+
+    def cleanup(self):
+        # Clean up process first to make sure stderr is populated.
+        super().cleanup()
+
+        # Save error state so that we can still query error even though our
+        # resources have been cleaned up.
+        self._final_error = self.HasError()
+        self._stderr.close()
+
+    # Returns True if ffmpeg stderr contains a known playback error.
+    def HasError(self):
+        if self._final_error is not None:
+            return self._final_error
+
+        try:
+            self._stderr.seek(0)
+            err_string = self._stderr.read().decode('utf8')
+
+            if 'Invalid data' in err_string:
+                util.log(util.LogSeverity.ERROR,
+                         f'Error reading "{self._filename}".')
+                return True
+
+            return False
+        except:
+            return True
 
     @property
     def elapsed(self):
@@ -88,6 +125,10 @@ class Playlist:
             self._cur_src = ResumedAudio(self._fs[self._index])
 
         return self._cur_src
+
+    def CurrentTrackStreamHasError(self):
+        return self._index >= len(
+            self._fs) or self._cur_src and self._cur_src.HasError()
 
     # Move to the next song, reshuffling and starting again if there isn't one.
     def NextTrack(self):

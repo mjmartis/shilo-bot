@@ -147,15 +147,22 @@ class ShiloGuild:
                            f'as {ctx.bot.user.name}!')
             return
 
-        if not ctx.voice_client.is_playing():
+        if not self._playlist:
             util.log(util.LogSeverity.WARNING,
-                     'Tried to skip with nothing playing.')
-            await ctx.send('Nothing to skip!')
+                     'Tried to skip with no playlist active.')
+            await ctx.send('Not playlist selected!')
             return
 
-        # The after-play callback will automatically start playing the next song.
         util.log(util.LogSeverity.INFO, 'Skipping to next.')
-        ctx.voice_client.stop()
+
+        if ctx.voice_client.is_playing():
+            # The after-play callback will automatically start playing the next
+            # song.
+            ctx.voice_client.stop()
+        else:
+            self._playlist.NextTrack()
+            track_name = self._playlist.current_track_name or "next track"
+            await ctx.send(f'Loaded "{track_name}".')
 
     # Fast-forward the current song.
     async def FastForward(self, ctx, interval_str):
@@ -250,17 +257,23 @@ class ShiloGuild:
 
         ctx.voice_client.stop()
 
-        callback = util.CancellableCoroutine(self._NextTrack(ctx, playlist))
+        callback = util.CancellableCoroutine(self._PlayNextTrack(ctx, playlist))
 
-        def schedule_next_track(ctx, callback, error):
-            if not ctx.voice_client:
-                return
-
-            future = asyncio.run_coroutine_threadsafe(callback.Run(),
-                                                      ctx.voice_client.loop)
+        def schedule_next_track(ctx, callback, playlist, error):
+            if playlist.CurrentTrackStreamHasError():
+                callback.Cancel()
+                print_err = ctx.send(
+                    'Error playing ' +
+                    f'"{playlist.current_track_name}". Stopping')
+                future = asyncio.run_coroutine_threadsafe(
+                    print_err, ctx.voice_client.loop)
+            else:
+                future = asyncio.run_coroutine_threadsafe(
+                    callback.Run(), ctx.voice_client.loop)
             future.result()
 
-        after = lambda e, c=ctx, cb=callback: schedule_next_track(c, cb, e)
+        after = lambda e, c=ctx, cb=callback, p=playlist: schedule_next_track(
+            c, cb, p, e)
 
         ctx.voice_client.play(stream, after=after)
 
@@ -271,7 +284,7 @@ class ShiloGuild:
         return True
 
     # Play the next track of the given playlist.
-    async def _NextTrack(self, ctx, playlist):
+    async def _PlayNextTrack(self, ctx, playlist):
         playlist.NextTrack()
 
         played = await self._PlayCurrent(ctx, playlist)

@@ -70,7 +70,7 @@ class ShiloBot(discord.ext.commands.Bot):
         self._RegisterFastForward()
         self._RegisterList()
         self._RegisterHelp()
-        self._RegisterCommandError()
+        self._RegisterOnCommandError()
 
     def _RegisterOnReady(self):
 
@@ -153,7 +153,7 @@ class ShiloBot(discord.ext.commands.Bot):
             await ctx.send(f'{HELP_MESSAGE}\n' +
                            f'```{util.format_table(HELP_TABLE, HELP_WIDTH)}```')
 
-    def _RegisterCommandError(self):
+    def _RegisterOnCommandError(self):
 
         @self.event
         async def on_command_error(ctx, error):
