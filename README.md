@@ -34,3 +34,10 @@ The `playlists` object has one attribute per playlist. The name of the attribute
 
 ### Running
 The bot can be launched with the command `python3 shilo.py`.
+
+# Code structure
+ShiloBot is decomposed into four modules:
+  - `shilo.py`. The entry point of the script, which defines the Discord bot itself. The bot merely delegates commands to handlers for relevant guilds.
+  - `guild.py`. The handler for ShiloBot's presence in a single guild. Executes the lion's share of the bot's behaviour.
+  - `playlist.py`. Audio- and playlist-specific logic, including an abstract representation of a single playlist.
+  - `util.py`. Utility behaviour, such as logging and table formatting.
