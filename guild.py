@@ -102,11 +102,7 @@ class ShiloGuild:
         if self._playlist:
             self._next_callbacks[self._playlist.name].Cancel()
 
-        played = await self._PlayCurrent(ctx, playlist)
-
-        if played:
-            util.log(util.LogSeverity.INFO, 'Playback started.')
-            await ctx.send(f'Playing "{playlist.current_track_name}".')
+        await self._PlayCurrent(ctx, playlist)
 
     # Restart the current (or a given) playlist.
     async def Restart(self, ctx, playlist_name=None):
@@ -171,9 +167,9 @@ class ShiloGuild:
                            f'as {ctx.bot.user.name}!')
             return
 
-        if not ctx.voice_client.is_playing():
+        if not self._playlist:
             util.log(util.LogSeverity.WARNING,
-                     'Tried to fast-forward with nothing playing.')
+                     'Tried to fast-forward with no playlist active.')
             await ctx.send('Nothing to fast-forward!')
             return
 
@@ -184,17 +180,19 @@ class ShiloGuild:
                      f'Cannot fast-forward by bad interval "{interval_str}".')
             return
 
-        # Race: "next song" callback executes before we've started the new stream.
-        if self._playlist:
+        self._playlist.FastForward(interval)
+
+        track_name = (f'"{self._playlist.current_track_name}"'
+                      if self._playlist.current_track_name else 'track')
+        util.log(util.LogSeverity.INFO, f'Fast-forwarding by {str(interval)}.')
+        await ctx.send(f'Fast-forwarding {track_name}.')
+
+        if ctx.voice_client.is_playing():
+            # Race: "next song" callback executes before we've started the new
+            # stream.
             self._next_callbacks[self._playlist.name].Cancel()
 
-        played = await self._PlayCurrent(ctx, self._playlist, skip=interval)
-
-        if played:
-            util.log(util.LogSeverity.INFO,
-                     f'Fast-forwarding by {str(interval)}.')
-            await ctx.send('Fast-forwarding ' +
-                           f'"{self._playlist.current_track_name}".')
+            await self._PlayCurrent(ctx, self._playlist)
 
     # List playlists or the tracks in an individual playlist.
     async def List(self, ctx, playlist_name=None):
@@ -241,25 +239,29 @@ class ShiloGuild:
 
     # Play the current entry from the given playlist over the bot voice channel.
     # Bot must be connected to some voice channel.
-    async def _PlayCurrent(self, ctx, playlist, skip=datetime.timedelta()):
+    async def _PlayCurrent(self, ctx, playlist):
         if not playlist.current_track_name:
             util.log(util.LogSeverity.WARNING,
                      f'Tried to play empty playlist "{playlist.name}".')
             await ctx.send(f'Couldn\'t play empty playlist "{playlist.name}"!')
-            return False
+            return
 
-        stream = await playlist.MakeCurrentTrackStream(skip)
+        stream = await playlist.MakeCurrentTrackStream()
         if not stream:
             util.log(util.LogSeverity.ERROR,
                      f'Couldn\'t play "{playlist.current_track_name}".')
             await ctx.send(f'Couldn\'t play "{playlist.current_track_name}"!')
-            return False
+            return
 
         ctx.voice_client.stop()
 
         callback = util.CancellableCoroutine(self._PlayNextTrack(ctx, playlist))
 
         def schedule_next_track(ctx, callback, playlist, error):
+            if not ctx.voice_client:
+                callback.Cancel()
+                return
+
             if playlist.CurrentTrackStreamHasError():
                 callback.Cancel()
                 print_err = ctx.send(
@@ -270,6 +272,7 @@ class ShiloGuild:
             else:
                 future = asyncio.run_coroutine_threadsafe(
                     callback.Run(), ctx.voice_client.loop)
+
             future.result()
 
         after = lambda e, c=ctx, cb=callback, p=playlist: schedule_next_track(
@@ -281,17 +284,13 @@ class ShiloGuild:
         self._playlist = playlist
         self._next_callbacks[playlist.name] = callback
 
-        return True
+        util.log(util.LogSeverity.INFO, 'Playback started.')
+        await ctx.send(f'Playing "{playlist.current_track_name}".')
 
     # Play the next track of the given playlist.
     async def _PlayNextTrack(self, ctx, playlist):
         playlist.NextTrack()
-
-        played = await self._PlayCurrent(ctx, playlist)
-
-        if played:
-            util.log(util.LogSeverity.INFO, 'Playback started.')
-            await ctx.send(f'Playing "{playlist.current_track_name}".')
+        await self._PlayCurrent(ctx, playlist)
 
     # Stop the currently playing song, de-select the current playlist and
     # disconnect from the current voice channel.

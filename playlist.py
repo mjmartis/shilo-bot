@@ -93,6 +93,7 @@ class Playlist:
         # Populated in Restart.
         self._index = None
         self._cur_src = None
+        self._ff = None
 
         # Start shuffled.
         self.Restart()
@@ -102,15 +103,16 @@ class Playlist:
         util.log(util.LogSeverity.INFO, f'Restarting playlist "{self._name}".')
 
         self._cur_src = None
-        random.shuffle(self._fs)
         self._index = 0
+        self._ff = datetime.timedelta()
+        random.shuffle(self._fs)
 
     # Returns a new stream that plays the track from the position last left off
     # by any previous stream. Optionally takes a timedelta to skip further
     # forward.
     #
     # Caller is responsible for cleaning up resources for the returned stream.
-    async def MakeCurrentTrackStream(self, skip=datetime.timedelta()):
+    async def MakeCurrentTrackStream(self):
         if self._index >= len(self._fs):
             return None
 
@@ -118,13 +120,21 @@ class Playlist:
             util.log(util.LogSeverity.INFO,
                      f'Resuming "{self.current_track_name}".')
             self._cur_src = ResumedAudio(self._fs[self._index],
-                                         self._cur_src.elapsed + skip)
+                                         self._cur_src.elapsed + self._ff)
         else:
             util.log(util.LogSeverity.INFO,
                      f'Starting "{self.current_track_name}".')
             self._cur_src = ResumedAudio(self._fs[self._index])
 
         return self._cur_src
+
+    # Skips forward into the track for subsequent calls to
+    # MakeCurrentTrackStream. Existing stream objects are unaffected.
+    def FastForward(self, duration):
+        if self._index >= len(self._fs):
+            return
+
+        self._ff += duration
 
     def CurrentTrackStreamHasError(self):
         return self._index >= len(
@@ -139,6 +149,7 @@ class Playlist:
             return
 
         self._cur_src = None
+        self._ff = datetime.timedelta()
 
     # Returns a full track listing with a cursor next to the currently-playing
     # track.
