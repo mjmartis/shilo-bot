@@ -20,7 +20,7 @@ To use ShiloBot, you must create your own Discord bot account and run the bot fr
 
 ### Dependencies
 ShiloBot has the following dependencies:
-  - python3 and pip (e.g. `apt install python3 python3-pip`)
+  - python3 (e.g. `apt install python3`)
   - [discord.py](https://discordpy.readthedocs.io/en/stable/) (e.g. `pip3 install 'discord.py[voice]'`)
   - [ffmpeg](https://ffmpeg.org/) (e.g. `apt install ffmpeg`)
 
