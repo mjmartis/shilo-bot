@@ -28,7 +28,7 @@ def _format_listing(entries, index):
 # streamed so far.
 class ResumedAudio(discord.FFmpegOpusAudio):
 
-    def __init__(self, filename, elapsed=datetime.timedelta()):
+    def __init__(self, filename, elapsed):
         # For error reporting.
         self._filename = util.file_stem(filename)
         # To capture ffmpeg error output.
@@ -124,7 +124,11 @@ class Playlist:
         else:
             util.log(util.LogSeverity.INFO,
                      f'Starting "{self.current_track_name}".')
-            self._cur_src = ResumedAudio(self._fs[self._index])
+            self._cur_src = ResumedAudio(self._fs[self._index], self._ff)
+
+        # When resuming the audio, the current fast-forward amount is already
+        # inherited from the previous stream.
+        self._ff = datetime.timedelta()
 
         return self._cur_src
 
