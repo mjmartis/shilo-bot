@@ -108,8 +108,7 @@ class Playlist:
         random.shuffle(self._fs)
 
     # Returns a new stream that plays the track from the position last left off
-    # by any previous stream. Optionally takes a timedelta to skip further
-    # forward.
+    # by any previous stream, plus any subsequent fast-forwarding.
     #
     # Caller is responsible for cleaning up resources for the returned stream.
     async def MakeCurrentTrackStream(self):
