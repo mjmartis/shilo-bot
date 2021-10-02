@@ -2,7 +2,7 @@
 
 import json
 
-import discord.ext.commands
+import discord
 import discord.ext.commands as dcoms
 
 import guilds
@@ -54,7 +54,7 @@ HELP_WIDTH: int = 40
 
 # The top-level bot. Responsible for creating independent presences in
 # different guilds and forwarding them commands.
-class ShiloBot(discord.ext.commands.Bot):
+class ShiloBot(dcoms.Bot):
 
     def __init__(self, playlist_config: dict[str, list[str]]):
         super().__init__(command_prefix='!', help_command=None)
@@ -170,7 +170,7 @@ class ShiloBot(discord.ext.commands.Bot):
         async def on_command_error(ctx: dcoms.Context,
                                    error: dcoms.CommandError) -> None:
             # Benign error: unknown command.
-            if isinstance(error, discord.ext.commands.errors.CommandNotFound):
+            if isinstance(error, dcoms.CommandNotFound):
                 await ctx.send(
                     f'Couldn\'t understand command "{ctx.invoked_with}"! ' +
                     'Use !help for instructions.')

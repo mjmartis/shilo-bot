@@ -6,12 +6,12 @@ import datetime
 import glob
 
 import discord
+import discord.ext.commands as dcoms
 
 import utils
 import playlists
 
 from typing import Awaitable, Callable, Optional
-import discord.ext.commands as dcoms
 
 
 # Returns true if the author can command the bot. That is, if the bot is in the
