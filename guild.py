@@ -15,6 +15,13 @@ def _can_command(ctx):
             ctx.author.voice.channel == ctx.voice_client.channel)
 
 
+# Returns the quoted name of the current track of the given playlist, or else
+# the unquoted word "track".
+def _track_name(playlist):
+    return (f'"{playlist.current_track_name}"'
+            if playlist.current_track_name else 'track')
+
+
 # Represents the presence of ShiloBot in one guild. This allows for independent
 # playback (e.g. position in playlists) per guild.
 class ShiloGuild:
@@ -123,7 +130,7 @@ class ShiloGuild:
         ctx.voice_client.stop()
 
         util.log(util.LogSeverity.INFO,
-                 f'Playback of "{self._playlist.current_track_name}" stopped.')
+                 f'Playback of {_track_name(self._playlist)} stopped.')
         await ctx.send(f'Stopping playlist "{self._playlist.name}".')
 
     # Move to the next track in the current playlist.
@@ -139,9 +146,7 @@ class ShiloGuild:
             ctx.voice_client.stop()
         else:
             self._playlist.NextTrack()
-            track_name = (f'"{self._playlist.current_track_name}"' if
-                          self._playlist.current_track_name else 'next track')
-            await ctx.send(f'Loaded {track_name}.')
+            await ctx.send(f'Loaded {_track_name(self._playlist)}.')
 
     # Fast-forward the current song.
     async def FastForward(self, ctx, interval_str):
@@ -157,10 +162,8 @@ class ShiloGuild:
 
         self._playlist.FastForward(interval)
 
-        track_name = (f'"{self._playlist.current_track_name}"'
-                      if self._playlist.current_track_name else 'track')
         util.log(util.LogSeverity.INFO, f'Fast-forwarding by {str(interval)}.')
-        await ctx.send(f'Fast-forwarding {track_name}.')
+        await ctx.send(f'Fast-forwarding {_track_name(self._playlist)}.')
 
         if ctx.voice_client.is_playing():
             # Race: "next song" callback executes before we've started the new
@@ -224,8 +227,8 @@ class ShiloGuild:
         stream = await playlist.MakeCurrentTrackStream()
         if not stream:
             util.log(util.LogSeverity.ERROR,
-                     f'Couldn\'t play "{playlist.current_track_name}".')
-            await ctx.send(f'Couldn\'t play "{playlist.current_track_name}"!')
+                     f'Couldn\'t play {_track_name(playlist)}.')
+            await ctx.send(f'Couldn\'t play {_track_name(playlist)}!')
             return
 
         ctx.voice_client.stop()
@@ -240,8 +243,7 @@ class ShiloGuild:
             if playlist.CurrentTrackStreamHasError():
                 callback.Cancel()
                 print_err = ctx.send(
-                    'Error playing ' +
-                    f'"{playlist.current_track_name}". Stopping')
+                    f'Error playing {_track_name(playlist)}. Stopping.')
                 future = asyncio.run_coroutine_threadsafe(
                     print_err, ctx.voice_client.loop)
             else:
@@ -260,7 +262,7 @@ class ShiloGuild:
         self._next_callbacks[playlist.name] = callback
 
         util.log(util.LogSeverity.INFO, 'Playback started.')
-        await ctx.send(f'Playing "{playlist.current_track_name}".')
+        await ctx.send(f'Playing {_track_name(playlist)}.')
 
     # Play the next track of the given playlist.
     async def _PlayNextTrack(self, ctx, playlist):
