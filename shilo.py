@@ -168,7 +168,7 @@ class ShiloBot(discord.ext.commands.Bot):
 
         @self.event
         async def on_command_error(ctx: dcoms.Context,
-                                   error: dcoms.errors.Error) -> None:
+                                   error: dcoms.CommandError) -> None:
             # Benign error: unknown command.
             if isinstance(error, discord.ext.commands.errors.CommandNotFound):
                 await ctx.send(

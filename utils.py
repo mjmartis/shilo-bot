@@ -5,7 +5,7 @@ import enum
 import os
 import textwrap
 
-from typing import Awaitable, Callable, Iterable, Optional
+from typing import Awaitable, Iterable, Optional
 
 
 # Used to signal the severity of a message, which could lead to different
