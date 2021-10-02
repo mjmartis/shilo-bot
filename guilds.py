@@ -11,7 +11,7 @@ import discord.ext.commands as dcoms
 import utils
 import playlists
 
-from typing import Awaitable, Callable, Optional
+from typing import Awaitable, cast, Callable, Optional
 
 
 # Returns true if the author can command the bot. That is, if the bot is in the
@@ -58,14 +58,16 @@ class ShiloGuild:
         if ctx.voice_client:
             await self._Disconnect(ctx.voice_client)
 
-        await dest.channel.connect()
+        dest_channel: discord.VoiceChannel = cast(discord.VoiceChannel,
+                                                  dest.channel)
+        await dest_channel.connect()
 
         # Deafen the bot to assure users they aren't being eavesdropped on.
-        await ctx.guild.change_voice_state(channel=dest.channel, self_deaf=True)
+        await ctx.guild.change_voice_state(channel=dest_channel, self_deaf=True)
 
         utils.log(utils.LogSeverity.INFO,
-                  f'Connected to voice channel "{dest.channel.name}".')
-        await ctx.send(f'Connected to the voice channel "{dest.channel.name}".')
+                  f'Connected to voice channel "{dest_channel.name}".')
+        await ctx.send(f'Connected to the voice channel "{dest_channel.name}".')
         return True
 
     # Leaves the currently-connected channel.
@@ -215,9 +217,10 @@ class ShiloGuild:
 
     # Leave the voice channel once everyone else has.
     async def OnVoiceStateUpdate(self, bot_voice_client: discord.VoiceClient,
-                                 before: discord.VoiceChannel,
-                                 after: discord.VoiceChannel) -> None:
-        bot_channel: Optional[discord.VoiceChannel] = bot_voice_client.channel
+                                 before: discord.VoiceState,
+                                 after: discord.VoiceState) -> None:
+        # TODO: find out how to annotate with a Connectable type.
+        bot_channel = cast(discord.VoiceChannel, bot_voice_client.channel)
 
         # Nothing to do if:
         #   1) We aren't connected to a voice channel, or

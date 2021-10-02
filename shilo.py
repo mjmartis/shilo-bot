@@ -8,7 +8,7 @@ import discord.ext.commands as dcoms
 import guilds
 import utils
 
-from typing import Any, Iterator, Optional
+from typing import Any, cast, Iterator, Optional
 
 CONFIG_FILE: str = 'shilo.json'
 
@@ -60,7 +60,7 @@ class ShiloBot(dcoms.Bot):
         super().__init__(command_prefix='!', help_command=None)
 
         self._playlist_config: dict[str, list[str]] = playlist_config
-        self._guilds: dict[str, guilds.ShiloGuild] = {}
+        self._guilds: dict[int, guilds.ShiloGuild] = {}
 
         self._RegisterOnReady()
         self._RegisterOnVoiceStateUpdate()
@@ -85,18 +85,19 @@ class ShiloBot(dcoms.Bot):
 
         @self.event
         async def on_voice_state_update(member: discord.Member,
-                                        before: discord.VoiceChannel,
-                                        after: discord.VoiceChannel) -> None:
+                                        before: discord.VoiceState,
+                                        after: discord.VoiceState) -> None:
             # Find the right guild to which to forward the message.
             if member.bot or not before.channel:
                 return
-            guild: discord.Guild = before.channel.guild
+            guild: discord.Guild = cast(discord.VoiceChannel,
+                                        before.channel).guild
 
             # Get the bot's voice client for the right guild.
-            vcs: Iterator[discord.VoiceChannel] = (
+            vcs: Iterator[discord.VoiceClient] = (
                 vc for vc in self.voice_clients if vc.guild == guild)
 
-            bot_vc: Optional[discord.VoiceChannel] = next(vcs, None)
+            bot_vc: Optional[discord.VoiceClient] = next(vcs, None)
             if not bot_vc:
                 return
 

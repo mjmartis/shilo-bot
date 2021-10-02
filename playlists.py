@@ -9,7 +9,7 @@ import discord
 
 import utils
 
-from typing import IO, Optional
+from typing import BinaryIO, cast, Optional
 
 TARGET_BITRATE: int = 96
 READ_AUDIO_CHUNK_TIME: datetime.timedelta = datetime.timedelta(milliseconds=20)
@@ -33,8 +33,11 @@ class ResumedAudio(discord.FFmpegOpusAudio):
     def __init__(self, filename: str, elapsed: datetime.timedelta):
         # For error reporting.
         self._filename: str = utils.file_stem(filename)
-        # To capture ffmpeg error output.
-        self._stderr: IO[bytes] = tempfile.TemporaryFile('a+b')
+        # To capture ffmpeg error output. The cast is required due to incorrect
+        # typing from discord.py: FFmpegOpusAudio can accept _any_ filelike
+        # object for stderr (i.e. TemporaryFile suffices) with a fileno
+        # attribute (i.e. not all BinaryIO objects suffice).
+        self._stderr: BinaryIO = cast(BinaryIO, tempfile.TemporaryFile('a+b'))
         # Final error status. Used once _stderr has been cleaned up.
         self._final_error: Optional[bool] = None
 
