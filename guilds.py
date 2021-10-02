@@ -7,7 +7,7 @@ import glob
 
 import discord
 
-import util
+import utils
 import playlists
 
 from typing import Awaitable, Callable, Optional
@@ -40,7 +40,7 @@ class ShiloGuild:
 
         self._playlist: Optional[playlists.Playlist] = None
 
-        self._next_callbacks: dict[str, util.CancellableCoroutine] = {}
+        self._next_callbacks: dict[str, utils.CancellableCoroutine] = {}
 
     # Returns true if bot successfully joined author's voice channel.
     async def Join(self, ctx: dcoms.Context) -> bool:
@@ -63,8 +63,8 @@ class ShiloGuild:
         # Deafen the bot to assure users they aren't being eavesdropped on.
         await ctx.guild.change_voice_state(channel=dest.channel, self_deaf=True)
 
-        util.log(util.LogSeverity.INFO,
-                 f'Connected to voice channel "{dest.channel.name}".')
+        utils.log(utils.LogSeverity.INFO,
+                  f'Connected to voice channel "{dest.channel.name}".')
         await ctx.send(f'Connected to the voice channel "{dest.channel.name}".')
         return True
 
@@ -75,8 +75,8 @@ class ShiloGuild:
                            f'as {ctx.bot.user.name}!')
             return
 
-        util.log(
-            util.LogSeverity.INFO, 'Disconnected from voice channel ' +
+        utils.log(
+            utils.LogSeverity.INFO, 'Disconnected from voice channel ' +
             f'"{ctx.voice_client.channel.name}".')
 
         await self._Disconnect(ctx.voice_client)
@@ -92,14 +92,14 @@ class ShiloGuild:
                                         if self._playlist and not playlist_name
                                         else playlist_name)
         if not resolved_name:
-            util.log(util.LogSeverity.WARNING,
-                     'Can\'t start: no playlist specified.')
+            utils.log(utils.LogSeverity.WARNING,
+                      'Can\'t start: no playlist specified.')
             await ctx.send('Playlist not specified!')
             return
 
         if resolved_name not in self._playlists:
-            util.log(util.LogSeverity.WARNING,
-                     f'Playlist "{resolved_name}" doesn\'t exist.')
+            utils.log(utils.LogSeverity.WARNING,
+                      f'Playlist "{resolved_name}" doesn\'t exist.')
             await ctx.send(f'Playlist "{resolved_name}" doesn\'t exist!')
             return
         playlist: playlists.Playlist = self._playlists[resolved_name]
@@ -129,8 +129,8 @@ class ShiloGuild:
             return
 
         if not ctx.voice_client.is_playing():
-            util.log(util.LogSeverity.WARNING,
-                     'Tried to stop with nothing playing.')
+            utils.log(utils.LogSeverity.WARNING,
+                      'Tried to stop with nothing playing.')
             await ctx.send('Nothing to stop!')
             return
 
@@ -141,8 +141,8 @@ class ShiloGuild:
         self._next_callbacks[self._playlist.name].Cancel()
         ctx.voice_client.stop()
 
-        util.log(util.LogSeverity.INFO,
-                 f'Playback of {_track_name(self._playlist)} stopped.')
+        utils.log(utils.LogSeverity.INFO,
+                  f'Playback of {_track_name(self._playlist)} stopped.')
         await ctx.send(f'Stopping playlist "{self._playlist.name}".')
 
     # Move to the next track in the current playlist.
@@ -151,7 +151,7 @@ class ShiloGuild:
             return
         assert self._playlist is not None
 
-        util.log(util.LogSeverity.INFO, 'Skipping to next.')
+        utils.log(utils.LogSeverity.INFO, 'Skipping to next.')
 
         if ctx.voice_client.is_playing():
             # The after-play callback will automatically start playing the next
@@ -167,17 +167,18 @@ class ShiloGuild:
             return
         assert self._playlist is not None
 
-        interval: Optional[datetime.timedelta] = util.parse_interval(
+        interval: Optional[datetime.timedelta] = utils.parse_interval(
             interval_str)
         if not interval:
             await ctx.send(f'Couldn\'t understand interval "{interval_str}"!')
-            util.log(util.LogSeverity.WARNING,
-                     f'Cannot fast-forward by bad interval "{interval_str}".')
+            utils.log(utils.LogSeverity.WARNING,
+                      f'Cannot fast-forward by bad interval "{interval_str}".')
             return
 
         self._playlist.FastForward(interval)
 
-        util.log(util.LogSeverity.INFO, f'Fast-forwarding by {str(interval)}.')
+        utils.log(utils.LogSeverity.INFO,
+                  f'Fast-forwarding by {str(interval)}.')
         await ctx.send(f'Fast-forwarding {_track_name(self._playlist)}.')
 
         if ctx.voice_client.is_playing():
@@ -203,8 +204,8 @@ class ShiloGuild:
 
         # Print specific playlist.
         if playlist_name not in self._playlists:
-            util.log(
-                util.LogSeverity.WARNING,
+            utils.log(
+                utils.LogSeverity.WARNING,
                 f'Trying to print non-existent playlist "{playlist_name}".')
             await ctx.send(f'No playlist "{playlist_name}"!')
             return
@@ -229,8 +230,8 @@ class ShiloGuild:
         if [m for m in bot_channel.members if not m.bot]:
             return
 
-        util.log(
-            util.LogSeverity.INFO,
+        utils.log(
+            utils.LogSeverity.INFO,
             f'Disconnected from empty voice channel "{bot_channel.name}".')
 
         await self._Disconnect(bot_voice_client)
@@ -239,29 +240,28 @@ class ShiloGuild:
     # Bot must be connected to some voice channel.
     async def _PlayCurrent(self, ctx, playlist) -> None:
         if not playlist.current_track_name:
-            util.log(util.LogSeverity.WARNING,
-                     f'Tried to play empty playlist "{playlist.name}".')
-            await ctx.send(
-                f'Couldn\'t play empty playlist "{playlist.name}"!')
+            utils.log(utils.LogSeverity.WARNING,
+                      f'Tried to play empty playlist "{playlist.name}".')
+            await ctx.send(f'Couldn\'t play empty playlist "{playlist.name}"!')
             return
 
         stream: playlists.ResumedAudio = \
             await playlist.MakeCurrentTrackStream()
         if not stream:
-            util.log(util.LogSeverity.ERROR,
-                     f'Couldn\'t play {_track_name(playlist)}.')
+            utils.log(utils.LogSeverity.ERROR,
+                      f'Couldn\'t play {_track_name(playlist)}.')
             await ctx.send(f'Couldn\'t play {_track_name(playlist)}!')
             return
 
         ctx.voice_client.stop()
 
-        callback: util.CancellableCoroutine = util.CancellableCoroutine(
+        callback: utils.CancellableCoroutine = utils.CancellableCoroutine(
             self._PlayNextTrack(ctx, playlist))
 
         def schedule_next_track(
                 error: Optional[str],
                 ctx: dcoms.Context = ctx,
-                callback: util.CancellableCoroutine = callback,
+                callback: utils.CancellableCoroutine = callback,
                 playlist: playlists.Playlist = playlist) -> None:
             if not ctx.voice_client:
                 callback.Cancel()
@@ -285,11 +285,12 @@ class ShiloGuild:
         self._playlist = playlist
         self._next_callbacks[playlist.name] = callback
 
-        util.log(util.LogSeverity.INFO, 'Playback started.')
+        utils.log(utils.LogSeverity.INFO, 'Playback started.')
         await ctx.send(f'Playing {_track_name(playlist)}.')
 
     # Play the next track of the given playlist.
-    async def _PlayNextTrack(self, ctx: dcoms.Context, playlist: playlists.Playlist) -> None:
+    async def _PlayNextTrack(self, ctx: dcoms.Context,
+                             playlist: playlists.Playlist) -> None:
         playlist.NextTrack()
         await self._PlayCurrent(ctx, playlist)
 
@@ -312,8 +313,8 @@ class ShiloGuild:
             return False
 
         if not self._playlist:
-            util.log(util.LogSeverity.WARNING,
-                     'Tried to skip or fast-forward with no playlist active.')
+            utils.log(utils.LogSeverity.WARNING,
+                      'Tried to skip or fast-forward with no playlist active.')
             await ctx.send('No playlist selected!')
             return False
 

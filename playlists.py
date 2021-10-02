@@ -7,7 +7,7 @@ import tempfile
 
 import discord
 
-import util
+import utils
 
 from typing import IO, Optional
 
@@ -23,7 +23,7 @@ def _format_listing(entries: list[str], index: int) -> str:
     nums = [str(i + 1) + '.' for i in range(len(entries))]
     markers = ['[<]' if i == index else '' for i in range(len(entries))]
 
-    return util.format_table(zip(*[nums, entries, markers]))
+    return utils.format_table(zip(*[nums, entries, markers]))
 
 
 # Wrapper around FFmpegOpusAudio that counts the number of milliseconds
@@ -32,7 +32,7 @@ class ResumedAudio(discord.FFmpegOpusAudio):
 
     def __init__(self, filename: str, elapsed: datetime.timedelta):
         # For error reporting.
-        self._filename: str = util.file_stem(filename)
+        self._filename: str = utils.file_stem(filename)
         # To capture ffmpeg error output.
         self._stderr: IO[bytes] = tempfile.TemporaryFile('a+b')
         # Final error status. Used once _stderr has been cleaned up.
@@ -70,8 +70,8 @@ class ResumedAudio(discord.FFmpegOpusAudio):
             err_string: str = self._stderr.read().decode('utf8')
 
             if 'Invalid data' in err_string:
-                util.log(util.LogSeverity.ERROR,
-                         f'Error reading "{self._filename}".')
+                utils.log(utils.LogSeverity.ERROR,
+                          f'Error reading "{self._filename}".')
                 return True
 
             return False
@@ -99,7 +99,8 @@ class Playlist:
 
     # Clear current song and reshuffle playlist.
     def Restart(self) -> None:
-        util.log(util.LogSeverity.INFO, f'Restarting playlist "{self._name}".')
+        utils.log(utils.LogSeverity.INFO,
+                  f'Restarting playlist "{self._name}".')
 
         self._index: int = 0
         self._cur_src: Optional[ResumedAudio] = None
@@ -115,13 +116,13 @@ class Playlist:
             return None
 
         if self._cur_src:
-            util.log(util.LogSeverity.INFO,
-                     f'Resuming "{self.current_track_name}".')
+            utils.log(utils.LogSeverity.INFO,
+                      f'Resuming "{self.current_track_name}".')
             self._cur_src = ResumedAudio(self._fs[self._index],
                                          self._cur_src.elapsed + self._ff)
         else:
-            util.log(util.LogSeverity.INFO,
-                     f'Starting "{self.current_track_name}".')
+            utils.log(utils.LogSeverity.INFO,
+                      f'Starting "{self.current_track_name}".')
             self._cur_src = ResumedAudio(self._fs[self._index], self._ff)
 
         # When resuming the audio, the current fast-forward amount is already
@@ -156,7 +157,7 @@ class Playlist:
     # Returns a full track listing with a cursor next to the currently-playing
     # track.
     def TrackListing(self) -> str:
-        titles: list[str] = [util.file_stem(fn) for fn in self._fs]
+        titles: list[str] = [utils.file_stem(fn) for fn in self._fs]
         return f'{self._name}:\n\n' + _format_listing(titles, self._index)
 
     @property
@@ -165,7 +166,7 @@ class Playlist:
 
     @property
     def current_track_name(self) -> Optional[str]:
-        return None if not self._fs else util.file_stem(self._fs[self._index])
+        return None if not self._fs else utils.file_stem(self._fs[self._index])
 
 
 # Resturns a playlist listing. Puts a cursor next to one "index" playlist.

@@ -3,15 +3,18 @@
 import json
 
 import discord.ext.commands
+import discord.ext.commands as dcoms
 
-import guild
-import util
+import guilds
+import utils
 
-CONFIG_FILE = 'shilo.json'
+from typing import Any, Iterator, Optional
+
+CONFIG_FILE: str = 'shilo.json'
 
 # Strings for the bot help message.
-HELP_MESSAGE = 'I am a renowned bard, here to play shuffled music to suit your mood.'
-HELP_TABLE = [
+HELP_MESSAGE: str = 'I am a renowned bard, here to play shuffled music to suit your mood.'
+HELP_TABLE: list[list[str]] = [
     ['!join', '', 'Joins the voice channel that you\'re currently in.'],
     ['', '', ''],
     ['!leave', '', 'Leaves the current voice channel.'],
@@ -46,18 +49,18 @@ HELP_TABLE = [
     ['', '', ''],
     ['!help', '', 'Shows this message.'],
 ]
-HELP_WIDTH = 40
+HELP_WIDTH: int = 40
 
 
 # The top-level bot. Responsible for creating independent presences in
 # different guilds and forwarding them commands.
 class ShiloBot(discord.ext.commands.Bot):
 
-    def __init__(self, playlist_config):
+    def __init__(self, playlist_config: dict[str, list[str]]):
         super().__init__(command_prefix='!', help_command=None)
 
-        self._playlist_config = playlist_config
-        self._guilds = {}
+        self._playlist_config: dict[str, list[str]] = playlist_config
+        self._guilds: dict[str, guilds.ShiloGuild] = {}
 
         self._RegisterOnReady()
         self._RegisterOnVoiceStateUpdate()
@@ -72,119 +75,128 @@ class ShiloBot(discord.ext.commands.Bot):
         self._RegisterHelp()
         self._RegisterOnCommandError()
 
-    def _RegisterOnReady(self):
+    def _RegisterOnReady(self) -> None:
 
         @self.event
         async def on_ready():
-            util.log(util.LogSeverity.INFO, f'{self.user.name} connected.')
+            utils.log(utils.LogSeverity.INFO, f'{self.user.name} connected.')
 
-    def _RegisterOnVoiceStateUpdate(self):
+    def _RegisterOnVoiceStateUpdate(self) -> None:
 
         @self.event
-        async def on_voice_state_update(member, before, after):
+        async def on_voice_state_update(member: discord.Member,
+                                        before: discord.VoiceChannel,
+                                        after: discord.VoiceChannel) -> None:
             # Find the right guild to which to forward the message.
             if member.bot or not before.channel:
                 return
-            guild = before.channel.guild
+            guild: discord.Guild = before.channel.guild
 
             # Get the bot's voice client for the right guild.
-            vcs = (vc for vc in self.voice_clients if vc.guild == guild)
-            bot_vc = next(vcs, None)
+            vcs: Iterator[discord.VoiceChannel] = (
+                vc for vc in self.voice_clients if vc.guild == guild)
+
+            bot_vc: Optional[discord.VoiceChannel] = next(vcs, None)
             if not bot_vc:
                 return
 
             await self._EnsureGuild(guild).OnVoiceStateUpdate(
                 bot_vc, before, after)
 
-    def _RegisterJoin(self):
+    def _RegisterJoin(self) -> None:
 
         @self.command(name='join')
-        async def join(ctx):
+        async def join(ctx: dcoms.Context) -> None:
             await self._EnsureGuild(ctx.guild).Join(ctx)
 
-    def _RegisterLeave(self):
+    def _RegisterLeave(self) -> None:
 
         @self.command(name='leave')
-        async def leave(ctx):
+        async def leave(ctx: dcoms.Context) -> None:
             await self._EnsureGuild(ctx.guild).Leave(ctx)
 
-    def _RegisterStart(self):
+    def _RegisterStart(self) -> None:
 
         @self.command(name='start')
-        async def start(ctx, playlist_name=None):
+        async def start(ctx: dcoms.Context,
+                        playlist_name: Optional[str] = None) -> None:
             await self._EnsureGuild(ctx.guild).Start(ctx, playlist_name)
 
-    def _RegisterRestart(self):
+    def _RegisterRestart(self) -> None:
 
         @self.command(name='restart')
-        async def restart(ctx, playlist_name=None):
+        async def restart(ctx: dcoms.Context,
+                          playlist_name: Optional[str] = None) -> None:
             await self._EnsureGuild(ctx.guild).Restart(ctx, playlist_name)
 
-    def _RegisterStop(self):
+    def _RegisterStop(self) -> None:
 
         @self.command(name='stop')
-        async def stop(ctx):
+        async def stop(ctx: dcoms.Context):
             await self._EnsureGuild(ctx.guild).Stop(ctx)
 
-    def _RegisterNext(self):
+    def _RegisterNext(self) -> None:
 
         @self.command(name='next')
-        async def next(ctx):
+        async def next(ctx: dcoms.Context) -> None:
             await self._EnsureGuild(ctx.guild).Next(ctx)
 
-    def _RegisterFastForward(self, *args):
+    def _RegisterFastForward(self, *args) -> None:
 
         @self.command(name='ff')
-        async def ff(ctx, *args):
-            interval_str = ' '.join(args)
+        async def ff(ctx: dcoms.Context, *args) -> None:
+            interval_str: str = ' '.join([str(a) for a in args])
             await self._EnsureGuild(ctx.guild).FastForward(ctx, interval_str)
 
-    def _RegisterList(self):
+    def _RegisterList(self) -> None:
 
         @self.command(name='list')
-        async def list(ctx, playlist_name=None):
+        async def list(ctx: dcoms.Context,
+                       playlist_name: Optional[str] = None) -> None:
             await self._EnsureGuild(ctx.guild).List(ctx, playlist_name)
 
-    def _RegisterHelp(self):
+    def _RegisterHelp(self) -> None:
 
         @self.command(name='help')
-        async def help(ctx):
-            util.log(util.LogSeverity.INFO, 'Printing help.')
+        async def help(ctx: dcoms.Context) -> None:
+            utils.log(utils.LogSeverity.INFO, 'Printing help.')
             await ctx.send(f'{HELP_MESSAGE}\n' +
-                           f'```{util.format_table(HELP_TABLE, HELP_WIDTH)}```')
+                           f'```{utils.format_table(HELP_TABLE, HELP_WIDTH)}```'
+                          )
 
-    def _RegisterOnCommandError(self):
+    def _RegisterOnCommandError(self) -> None:
 
         @self.event
-        async def on_command_error(ctx, error):
+        async def on_command_error(ctx: dcoms.Context,
+                                   error: dcoms.errors.Error) -> None:
             # Benign error: unknown command.
             if isinstance(error, discord.ext.commands.errors.CommandNotFound):
                 await ctx.send(
                     f'Couldn\'t understand command "{ctx.invoked_with}"! ' +
                     'Use !help for instructions.')
-                util.log(util.LogSeverity.WARNING,
-                         f'Bad command "{ctx.invoked_with}" received.')
+                utils.log(utils.LogSeverity.WARNING,
+                          f'Bad command "{ctx.invoked_with}" received.')
                 return
 
             # Otherwise, an unexpected error while running a command.
             await ctx.send('Command failed! Internal error.')
-            util.log(util.LogSeverity.ERROR, f'Internal error: "{error}".')
+            utils.log(utils.LogSeverity.ERROR, f'Internal error: "{error}".')
 
     # Retrieve the object for the given guild, creating a new one if necessary.
-    def _EnsureGuild(self, g):
+    def _EnsureGuild(self, g: discord.Guild) -> guilds.ShiloGuild:
         if g.id not in self._guilds:
-            self._guilds[g.id] = guild.ShiloGuild(self._playlist_config)
-            util.log(util.LogSeverity.INFO,
-                     f'Initialising for guild "{g.name}".')
+            self._guilds[g.id] = guilds.ShiloGuild(self._playlist_config)
+            utils.log(utils.LogSeverity.INFO,
+                      f'Initialising for guild "{g.name}".')
 
         return self._guilds[g.id]
 
 
-def main():
-    config = json.loads(open(CONFIG_FILE, 'r').read())
-    bot = ShiloBot(config['playlists'])
+def main() -> None:
+    config: dict[str, Any] = json.loads(open(CONFIG_FILE, 'r').read())
+    bot: ShiloBot = ShiloBot(config['playlists'])
 
-    util.log(util.LogSeverity.INFO, 'Connecting to Discord.')
+    utils.log(utils.LogSeverity.INFO, 'Connecting to Discord.')
     bot.run(config['token'])
 
 
