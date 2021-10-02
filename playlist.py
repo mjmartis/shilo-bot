@@ -5,19 +5,21 @@ import sys
 import random
 import tempfile
 
+from typing import IO, Optional
+
 import discord
 
 import util
 
-TARGET_BITRATE = 96
-READ_AUDIO_CHUNK_TIME = datetime.timedelta(milliseconds=20)
+TARGET_BITRATE: int = 96
+READ_AUDIO_CHUNK_TIME: datetime.timedelta = datetime.timedelta(milliseconds=20)
 
 
 # Returns a format string with lines of the form:
 # [1-indexed row number] [entry] [marker]
 #
 # Where marker is a text "arrow" pointing to the specified index.
-def _format_listing(entries, index):
+def _format_listing(entries: list[str], index: int) -> str:
     nums = [str(i + 1) + '.' for i in range(len(entries))]
     markers = ['[<]' if i == index else '' for i in range(len(entries))]
 
@@ -28,13 +30,13 @@ def _format_listing(entries, index):
 # streamed so far.
 class ResumedAudio(discord.FFmpegOpusAudio):
 
-    def __init__(self, filename, elapsed):
+    def __init__(self, filename: str, elapsed: datetime.timedelta):
         # For error reporting.
-        self._filename = util.file_stem(filename)
+        self._filename: str = util.file_stem(filename)
         # To capture ffmpeg error output.
-        self._stderr = tempfile.TemporaryFile('a+b')
+        self._stderr: IO[bytes] = tempfile.TemporaryFile('a+b')
         # Final error status. Used once _stderr has been cleaned up.
-        self._final_error = None
+        self._final_error: Optional[bool] = None
 
         # TODO: foward args if more sophisticated construction is needed.
         super().__init__(filename,
@@ -43,13 +45,13 @@ class ResumedAudio(discord.FFmpegOpusAudio):
                          options=f'-bufsize {2*TARGET_BITRATE}k',
                          before_options=f'-ss {str(elapsed)}')
 
-        self._elapsed = elapsed
+        self._elapsed: datetime.timedelta = elapsed
 
-    def read(self):
+    def read(self) -> bytes:
         self._elapsed += READ_AUDIO_CHUNK_TIME
         return super().read()
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         # Clean up process first to make sure stderr is populated.
         super().cleanup()
 
@@ -59,13 +61,13 @@ class ResumedAudio(discord.FFmpegOpusAudio):
         self._stderr.close()
 
     # Returns True if ffmpeg stderr contains a known playback error.
-    def HasError(self):
+    def HasError(self) -> bool:
         if self._final_error is not None:
             return self._final_error
 
         try:
             self._stderr.seek(0)
-            err_string = self._stderr.read().decode('utf8')
+            err_string: str = self._stderr.read().decode('utf8')
 
             if 'Invalid data' in err_string:
                 util.log(util.LogSeverity.ERROR,
@@ -77,7 +79,7 @@ class ResumedAudio(discord.FFmpegOpusAudio):
             return True
 
     @property
-    def elapsed(self):
+    def elapsed(self) -> datetime.timedelta:
         return self._elapsed
 
 
@@ -85,33 +87,30 @@ class ResumedAudio(discord.FFmpegOpusAudio):
 # the current file.
 class Playlist:
 
-    def __init__(self, name, fs):
+    def __init__(self, name: str, fs: list[str]):
         # Make copy.
-        self._name = name
-        self._fs = list(fs)
+        self._name: str = name
+        self._fs: list[str] = list(fs)
 
         # Populated in Restart.
-        self._index = None
-        self._cur_src = None
-        self._ff = None
 
         # Start shuffled.
         self.Restart()
 
     # Clear current song and reshuffle playlist.
-    def Restart(self):
+    def Restart(self) -> None:
         util.log(util.LogSeverity.INFO, f'Restarting playlist "{self._name}".')
 
-        self._cur_src = None
-        self._index = 0
-        self._ff = datetime.timedelta()
+        self._index: int = 0
+        self._cur_src: Optional[ResumedAudio] = None
+        self._ff: datetime.timedelta = datetime.timedelta()
         random.shuffle(self._fs)
 
     # Returns a new stream that plays the track from the position last left off
     # by any previous stream, plus any subsequent fast-forwarding.
     #
     # Caller is responsible for cleaning up resources for the returned stream.
-    async def MakeCurrentTrackStream(self):
+    async def MakeCurrentTrackStream(self) -> Optional[ResumedAudio]:
         if self._index >= len(self._fs):
             return None
 
@@ -133,18 +132,18 @@ class Playlist:
 
     # Skips forward into the track for subsequent calls to
     # MakeCurrentTrackStream. Existing stream objects are unaffected.
-    def FastForward(self, duration):
+    def FastForward(self, duration: datetime.timedelta) -> None:
         if self._index >= len(self._fs):
             return
 
         self._ff += duration
 
-    def CurrentTrackStreamHasError(self):
-        return self._index >= len(
-            self._fs) or self._cur_src and self._cur_src.HasError()
+    def CurrentTrackStreamHasError(self) -> bool:
+        return (self._index >= len(self._fs) or
+                self._cur_src is not None and self._cur_src.HasError())
 
     # Move to the next song, reshuffling and starting again if there isn't one.
-    def NextTrack(self):
+    def NextTrack(self) -> None:
         self._index += 1
 
         if self._index >= len(self._fs):
@@ -156,17 +155,17 @@ class Playlist:
 
     # Returns a full track listing with a cursor next to the currently-playing
     # track.
-    def TrackListing(self):
-        titles = [util.file_stem(fn) for fn in self._fs]
+    def TrackListing(self) -> str:
+        titles: list[str] = [util.file_stem(fn) for fn in self._fs]
         return f'{self._name}:\n\n' + _format_listing(titles, self._index)
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._name
 
     @property
-    def current_track_name(self):
-        return self._fs and util.file_stem(self._fs[self._index])
+    def current_track_name(self) -> Optional[str]:
+        return None if not self._fs else util.file_stem(self._fs[self._index])
 
 
 # Resturns a playlist listing. Puts a cursor next to one "index" playlist.
