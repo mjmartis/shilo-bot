@@ -95,8 +95,6 @@ class Playlist:
         self._name: str = name
         self._fs: list[str] = list(fs)
 
-        # Populated in Restart.
-
         # Start shuffled.
         self.Restart()
 
