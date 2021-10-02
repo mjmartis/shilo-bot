@@ -26,9 +26,9 @@ def log(severity: LogSeverity, message: str) -> None:
 # Helper object holding a callback that can be cancelled.
 class CancellableCoroutine():
 
-    def __init__(self, callback: Callable[[], None]):
+    def __init__(self, callback: Awaitable[None]):
         self._cancelled: bool = False
-        self._callback: Callable[[], None] = callback
+        self._callback: Awaitable[None] = callback
 
     def Cancel(self):
         self._cancelled = True

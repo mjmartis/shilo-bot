@@ -5,11 +5,11 @@ import sys
 import random
 import tempfile
 
-from typing import IO, Optional
-
 import discord
 
 import util
+
+from typing import IO, Optional
 
 TARGET_BITRATE: int = 96
 READ_AUDIO_CHUNK_TIME: datetime.timedelta = datetime.timedelta(milliseconds=20)
