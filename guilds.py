@@ -86,7 +86,10 @@ class ShiloGuild:
         await ctx.send('Disconnected.')
 
     # Start playing the current playlist (or the given playlist).
-    async def Start(self, ctx, playlist_name=None, restart=False) -> None:
+    async def Start(self,
+                    ctx: dcoms.Context,
+                    playlist_name: Optional[str] = None,
+                    restart: bool = False) -> None:
         if not await self.Join(ctx):
             return
 
@@ -148,7 +151,7 @@ class ShiloGuild:
         await ctx.send(f'Stopping playlist "{self._playlist.name}".')
 
     # Move to the next track in the current playlist.
-    async def Next(self, ctx) -> None:
+    async def Next(self, ctx: dcoms.Context) -> None:
         if not await self._ReportActivePlaylistControl(ctx):
             return
         assert self._playlist is not None
@@ -241,14 +244,15 @@ class ShiloGuild:
 
     # Play the current entry from the given playlist over the bot voice channel.
     # Bot must be connected to some voice channel.
-    async def _PlayCurrent(self, ctx, playlist) -> None:
+    async def _PlayCurrent(self, ctx: dcoms.Context,
+                           playlist: playlists.Playlist) -> None:
         if not playlist.current_track_name:
             utils.log(utils.LogSeverity.WARNING,
                       f'Tried to play empty playlist "{playlist.name}".')
             await ctx.send(f'Couldn\'t play empty playlist "{playlist.name}"!')
             return
 
-        stream: playlists.ResumedAudio = \
+        stream: Optional[playlists.ResumedAudio] = \
             await playlist.MakeCurrentTrackStream()
         if not stream:
             utils.log(utils.LogSeverity.ERROR,
