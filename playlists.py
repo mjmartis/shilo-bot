@@ -33,10 +33,9 @@ class ResumedAudio(discord.FFmpegOpusAudio):
     def __init__(self, filename: str, elapsed: datetime.timedelta):
         # For error reporting.
         self._filename: str = utils.file_stem(filename)
-        # To capture ffmpeg error output. The cast is required due to incorrect
-        # typing from discord.py: FFmpegOpusAudio can accept _any_ filelike
-        # object for stderr (i.e. TemporaryFile suffices) with a fileno
-        # attribute (i.e. not all BinaryIO objects suffice).
+        # mypy bug: the FFMpegAudio constructor accepts a BinaryIO, but this
+        # variable is an IO[bytes]. BinaryIO is actually an alias of IO[bytes],
+        # which mypy does not correctly recognise.
         self._stderr: BinaryIO = cast(BinaryIO, tempfile.TemporaryFile('a+b'))
         # Final error status. Used once _stderr has been cleaned up.
         self._final_error: Optional[bool] = None
