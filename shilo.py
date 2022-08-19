@@ -57,7 +57,12 @@ HELP_WIDTH: int = 40
 class ShiloBot(dcoms.Bot):
 
     def __init__(self, playlist_config: dict[str, list[str]]):
-        super().__init__(command_prefix='!', help_command=None)
+        super().__init__(command_prefix='!',
+                         help_command=None,
+                         intents=discord.Intents(messages=True,
+                                                 message_content=True,
+                                                 guilds=True,
+                                                 voice_states=True))
 
         self._playlist_config: dict[str, list[str]] = playlist_config
         self._guilds: dict[int, guilds.ShiloGuild] = {}
