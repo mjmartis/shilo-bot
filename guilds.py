@@ -48,7 +48,7 @@ class ShiloGuild:
 
         # No channel to connect to.
         if not dest:
-            await ctx.send('You must connect to a voice channel!')
+            await ctx.respond('You must connect to a voice channel!')
             return False
 
         # Already connected to correct channel.
@@ -67,14 +67,14 @@ class ShiloGuild:
 
         utils.log(utils.LogSeverity.INFO,
                   f'Connected to voice channel "{dest_channel.name}".')
-        await ctx.send(f'Connected to the voice channel "{dest_channel.name}".')
+        await ctx.respond(f'Connected to the voice channel "{dest_channel.name}".')
         return True
 
     # Leaves the currently-connected channel.
     async def Leave(self, ctx: dcoms.Context) -> None:
         if not _can_command(ctx):
-            await ctx.send('You must connect yourself to the same channel ' +
-                           f'as {ctx.bot.user.name}!')
+            await ctx.respond('You must connect yourself to the same channel ' +
+                              f'as {ctx.bot.user.name}!')
             return
 
         utils.log(
@@ -83,7 +83,7 @@ class ShiloGuild:
 
         await self._Disconnect(ctx.voice_client)
 
-        await ctx.send('Disconnected.')
+        await ctx.respond('Disconnected.')
 
     # Start playing the current playlist (or the given playlist).
     async def Start(self,
@@ -99,17 +99,17 @@ class ShiloGuild:
         if not resolved_name:
             utils.log(utils.LogSeverity.WARNING,
                       'Can\'t start: no playlist specified.')
-            await ctx.send('Playlist not specified!')
+            await ctx.respond('Playlist not specified!')
             return
 
         if resolved_name not in self._playlists:
             utils.log(utils.LogSeverity.WARNING,
                       f'Playlist "{resolved_name}" doesn\'t exist.')
-            await ctx.send(f'Playlist "{resolved_name}" doesn\'t exist!')
+            await ctx.respond(f'Playlist "{resolved_name}" doesn\'t exist!')
             return
         playlist: playlists.Playlist = self._playlists[resolved_name]
 
-        await ctx.send(f'Playing playlist "{resolved_name}".')
+        await ctx.respond(f'Playing playlist "{resolved_name}".')
 
         if restart:
             playlist.Restart()
@@ -129,14 +129,14 @@ class ShiloGuild:
     # Stop the currently-playing playlist.
     async def Stop(self, ctx: dcoms.Context) -> None:
         if not _can_command(ctx):
-            await ctx.send('You must connect yourself to the same channel ' +
-                           f'as {ctx.bot.user.name}!')
+            await ctx.respond('You must connect yourself to the same channel ' +
+                              f'as {ctx.bot.user.name}!')
             return
 
         if not ctx.voice_client.is_playing():
             utils.log(utils.LogSeverity.WARNING,
                       'Tried to stop with nothing playing.')
-            await ctx.send('Nothing to stop!')
+            await ctx.respond('Nothing to stop!')
             return
 
         # Playing => active playlist.
@@ -148,7 +148,7 @@ class ShiloGuild:
 
         utils.log(utils.LogSeverity.INFO,
                   f'Playback of {_track_name(self._playlist)} stopped.')
-        await ctx.send(f'Stopping playlist "{self._playlist.name}".')
+        await ctx.respond(f'Stopping playlist "{self._playlist.name}".')
 
     # Move to the next track in the current playlist.
     async def Next(self, ctx: dcoms.Context) -> None:
@@ -158,6 +158,7 @@ class ShiloGuild:
 
         utils.log(utils.LogSeverity.INFO, 'Skipping to next.')
 
+        await ctx.respond(f'Finished {_track_name(self._playlist)}.')
         if ctx.voice_client.is_playing():
             # The after-play callback will automatically start playing the next
             # song.
@@ -175,7 +176,7 @@ class ShiloGuild:
         interval: Optional[datetime.timedelta] = utils.parse_interval(
             interval_str)
         if not interval:
-            await ctx.send(f'Couldn\'t understand interval "{interval_str}"!')
+            await ctx.respond(f'Couldn\'t understand interval "{interval_str}"!')
             utils.log(utils.LogSeverity.WARNING,
                       f'Cannot fast-forward by bad interval "{interval_str}".')
             return
@@ -184,14 +185,14 @@ class ShiloGuild:
 
         utils.log(utils.LogSeverity.INFO,
                   f'Fast-forwarding by {str(interval)}.')
-        await ctx.send(f'Fast-forwarding {_track_name(self._playlist)}.')
+        await ctx.respond(f'Fast-forwarding {_track_name(self._playlist)}.')
 
         if ctx.voice_client.is_playing():
             # Race: "next song" callback executes before we've started the new
             # stream.
             self._next_callbacks[self._playlist.name].Cancel()
 
-            await self._PlayCurrent(ctx, self._playlist)
+            await self._PlayCurrent(ctx, self._playlist, announce=False)
 
     # List playlists or the tracks in an individual playlist.
     async def List(self,
@@ -204,7 +205,7 @@ class ShiloGuild:
                 self._playlist.name) if self._playlist else -1
             table: str = playlists.playlist_listing(playlist_names,
                                                     current_index)
-            await ctx.send(f'```\n{table}\n```')
+            await ctx.respond(f'```\n{table}\n```')
             return
 
         # Print specific playlist.
@@ -212,10 +213,10 @@ class ShiloGuild:
             utils.log(
                 utils.LogSeverity.WARNING,
                 f'Trying to print non-existent playlist "{playlist_name}".')
-            await ctx.send(f'No playlist "{playlist_name}"!')
+            await ctx.respond(f'No playlist "{playlist_name}"!')
             return
 
-        await ctx.send(
+        await ctx.respond(
             f'```\n{self._playlists[playlist_name].TrackListing()}\n```')
 
     # Leave the voice channel once everyone else has.
@@ -245,11 +246,12 @@ class ShiloGuild:
     # Play the current entry from the given playlist over the bot voice channel.
     # Bot must be connected to some voice channel.
     async def _PlayCurrent(self, ctx: dcoms.Context,
-                           playlist: playlists.Playlist) -> None:
+                           playlist: playlists.Playlist,
+                           announce: bool = True) -> None:
         if not playlist.current_track_name:
             utils.log(utils.LogSeverity.WARNING,
                       f'Tried to play empty playlist "{playlist.name}".')
-            await ctx.send(f'Couldn\'t play empty playlist "{playlist.name}"!')
+            await ctx.respond(f'Couldn\'t play empty playlist "{playlist.name}"!')
             return
 
         stream: Optional[playlists.ResumedAudio] = \
@@ -293,7 +295,8 @@ class ShiloGuild:
         self._next_callbacks[playlist.name] = callback
 
         utils.log(utils.LogSeverity.INFO, 'Playback started.')
-        await ctx.send(f'Playing {_track_name(playlist)}.')
+        if announce:
+            await ctx.send(f'Playing {_track_name(playlist)}.')
 
     # Play the next track of the given playlist.
     async def _PlayNextTrack(self, ctx: dcoms.Context,
@@ -315,14 +318,14 @@ class ShiloGuild:
     # active playlist. If not, reports to the user.
     async def _ReportActivePlaylistControl(self, ctx: dcoms.Context) -> bool:
         if not _can_command(ctx):
-            await ctx.send('You must connect yourself to the same channel ' +
-                           f'as {ctx.bot.user.name}!')
+            await ctx.respond('You must connect yourself to the same channel ' +
+                              f'as {ctx.bot.user.name}!')
             return False
 
         if not self._playlist:
             utils.log(utils.LogSeverity.WARNING,
                       'Tried to skip or fast-forward with no playlist active.')
-            await ctx.send('No playlist selected!')
+            await ctx.respond('No playlist selected!')
             return False
 
         return True
