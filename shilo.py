@@ -67,10 +67,16 @@ CMD_DESCS = {
     'help': 'Explains how to use the bot',
 }
 
+CMD_ARG_DESCS = {
+    'list': 'The playlist whose tracks to list (otherwise, available ' +
+            'playlists will be listed)',
+    'start': 'The playlist to start (defaults to the last-played playlist)',
+    'restart': 'The playlist to restart (defaults to the last-played playlist)',
+    'ff': 'The time interval to fast-forward by (e.g. "1s", "2 min")',
+}
+
 # The top-level bot. Responsible for creating independent presences in
 # different guilds and forwarding them commands.
-
-
 class ShiloBot(dcoms.Bot):
     # I'm including some prefix that will hopefully never match, so that not
     # every message is passed to my bot. Given I'm using slash commands, I'm
@@ -137,7 +143,7 @@ class ShiloBot(dcoms.Bot):
 
         @self.slash_command(description=CMD_DESCS['join'])
         async def join(ctx: dctx.ApplicationContext) -> None:
-            await self._EnsureGuild(ctx.guild).Join(ctx)
+            await self._EnsureGuild(ctx.guild).Join(ctx, announce=True)
 
     def _RegisterLeave(self) -> None:
 
@@ -148,17 +154,21 @@ class ShiloBot(dcoms.Bot):
     def _RegisterStart(self) -> None:
 
         @self.slash_command(description=CMD_DESCS['start'])
-        @discord.option('playlist name', type=str, required=False)
         async def start(ctx: dctx.ApplicationContext,
-                        playlist_name: Optional[str] = None) -> None:
+                        playlist_name: discord.Option(str,
+                                                      CMD_ARG_DESCS['start'],
+                                                      required=False)) -> None:
             await self._EnsureGuild(ctx.guild).Start(ctx, playlist_name)
 
     def _RegisterRestart(self) -> None:
 
         @self.slash_command(description=CMD_DESCS['restart'])
-        @discord.option('playlist name', type=str, required=False)
-        async def restart(ctx: dctx.ApplicationContext,
-                          playlist_name: Optional[str] = None) -> None:
+        async def restart(
+            ctx: dctx.ApplicationContext,
+            playlist_name: discord.Option(
+                str,
+                CMD_ARG_DESCS['restart'],
+                required=False)) -> None:
             await self._EnsureGuild(ctx.guild).Restart(ctx, playlist_name)
 
     def _RegisterStop(self) -> None:
@@ -176,16 +186,18 @@ class ShiloBot(dcoms.Bot):
     def _RegisterFastForward(self) -> None:
 
         @self.slash_command(description=CMD_DESCS['ff'])
-        @discord.option('interval', type=str, required=True)
-        async def ff(ctx: dctx.ApplicationContext, interval: str) -> None:
+        async def ff(ctx: dctx.ApplicationContext,
+                     interval: discord.Option(str, CMD_ARG_DESCS['ff'],
+                                              required=True)) -> None:
             await self._EnsureGuild(ctx.guild).FastForward(ctx, interval)
 
     def _RegisterList(self) -> None:
 
         @self.slash_command(description=CMD_DESCS['list'])
-        @discord.option('playlist name', description=CMD_DESCS['list'])
         async def list(ctx: dctx.ApplicationContext,
-                       playlist_name: Optional[str] = None) -> None:
+                       playlist_name: discord.Option(str,
+                                                     CMD_ARG_DESCS['list'],
+                                                     required=False)) -> None:
             await self._EnsureGuild(ctx.guild).List(ctx, playlist_name)
 
     def _RegisterHelp(self) -> None:
@@ -207,7 +219,8 @@ class ShiloBot(dcoms.Bot):
                 cmd = f' "{cast(Any, ctx).invoked_with}"' if hasattr(
                     ctx, 'invoked_with') else ''
                 await ctx.respond(
-                    f'Couldn\'t understand command{cmd}! ' + 'Use /help for instructions.')
+                    f'Couldn\'t understand command{cmd}! ' +
+                    'Use /help for instructions.')
                 utils.log(utils.LogSeverity.WARNING,
                           f'Bad command{cmd} received.')
                 return

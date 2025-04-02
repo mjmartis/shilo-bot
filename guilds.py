@@ -4,6 +4,7 @@ import asyncio
 import concurrent.futures as futures
 import datetime
 import glob
+import enum
 
 import discord
 import discord.commands.context as dctx
@@ -13,6 +14,10 @@ import playlists
 
 from typing import cast, Optional, Any, Coroutine
 
+class JoinResult(enum.Enum):
+    FAIL = enum.auto()
+    SUCCESS = enum.auto()
+    ALREADY_JOINED = enum.auto()
 
 # Returns true if the author can command the bot. That is, if the bot is in the
 # same channel as the author.
@@ -47,18 +52,21 @@ class ShiloGuild:
         self._next_callbacks: dict[str, utils.CancellableCoroutine] = {}
 
     # Returns true if bot successfully joined author's voice channel.
-    async def Join(self, ctx: dctx.ApplicationContext) -> bool:
+    async def Join(self, ctx: dctx.ApplicationContext,
+                   announce: bool = False) -> JoinResult:
         dest: Optional[discord.VoiceState] = ctx.author.voice if isinstance(
             ctx.author, discord.Member) else None
 
         # No channel to connect to.
         if not dest:
             await ctx.respond('You must connect to a voice channel!')
-            return False
+            return JoinResult.FAIL
 
         # Already connected to correct channel.
         if ctx.voice_client and ctx.voice_client.channel == dest.channel:
-            return True
+            if announce:
+                await ctx.respond('Already connected!')
+            return JoinResult.ALREADY_JOINED
 
         if ctx.voice_client:
             await self._Disconnect(ctx.voice_client)
@@ -73,7 +81,7 @@ class ShiloGuild:
         utils.log(utils.LogSeverity.INFO,
                   f'Connected to voice channel "{dest_channel.name}".')
         await ctx.respond('Connected to the voice channel ' + f'"{dest_channel.name}".')
-        return True
+        return JoinResult.SUCCESS
 
     # Leaves the currently-connected channel.
     async def Leave(self, ctx: dctx.ApplicationContext) -> None:
@@ -97,8 +105,13 @@ class ShiloGuild:
                     ctx: dctx.ApplicationContext,
                     playlist_name: Optional[str] = None,
                     restart: bool = False) -> None:
-        if not await self.Join(ctx):
+        join_result: JoinResult = await self.Join(ctx)
+        if join_result == JoinResult.FAIL:
             return
+
+        # Make sure only our first message is a response type.
+        def broadcast(msg): return ctx.respond(
+            msg) if join_result == JoinResult.ALREADY_JOINED else ctx.send(msg)
 
         resolved_name: Optional[str] = (self._playlist.name
                                         if self._playlist and not playlist_name
@@ -106,17 +119,17 @@ class ShiloGuild:
         if not resolved_name:
             utils.log(utils.LogSeverity.WARNING,
                       'Can\'t start: no playlist specified.')
-            await ctx.respond('Playlist not specified!')
+            await broadcast('Playlist not specified!')
             return
 
         if resolved_name not in self._playlists:
             utils.log(utils.LogSeverity.WARNING,
                       f'Playlist "{resolved_name}" doesn\'t exist.')
-            await ctx.respond(f'Playlist "{resolved_name}" doesn\'t exist!')
+            await broadcast(f'Playlist "{resolved_name}" doesn\'t exist!')
             return
         playlist: playlists.Playlist = self._playlists[resolved_name]
 
-        await ctx.respond(f'Playing playlist "{resolved_name}".')
+        await broadcast(f'Playing playlist "{resolved_name}".')
 
         if restart:
             playlist.Restart()
@@ -157,7 +170,7 @@ class ShiloGuild:
 
         utils.log(utils.LogSeverity.INFO,
                   f'Playback of {_track_name(self._playlist)} stopped.')
-        await ctx.respond(f'Stopping playlist "{self._playlist.name}".')
+        await ctx.respond(f'Stopped playlist "{self._playlist.name}".')
 
     # Move to the next track in the current playlist.
     async def Next(self, ctx: dctx.ApplicationContext) -> None:
@@ -188,7 +201,8 @@ class ShiloGuild:
         interval: Optional[datetime.timedelta] = utils.parse_interval(
             interval_str)
         if not interval:
-            await ctx.respond('Couldn\'t understand interval ' + f'"{interval_str}"!')
+            await ctx.respond('Couldn\'t understand interval ' +
+                              f'"{interval_str}"!')
             utils.log(utils.LogSeverity.WARNING,
                       f'Cannot fast-forward by bad interval "{interval_str}".')
             return
@@ -197,7 +211,7 @@ class ShiloGuild:
 
         utils.log(utils.LogSeverity.INFO,
                   f'Fast-forwarding by {str(interval)}.')
-        await ctx.respond(f'Fast-forwarding {_track_name(self._playlist)}.')
+        await ctx.respond(f'Fast-forwarded {_track_name(self._playlist)}.')
 
         if ctx.voice_client.is_playing():
             # Race: "next song" callback executes before we've started the new
@@ -265,7 +279,7 @@ class ShiloGuild:
         if not playlist.current_track_name:
             utils.log(utils.LogSeverity.WARNING,
                       f'Tried to play empty playlist "{playlist.name}".')
-            await ctx.respond('Couldn\'t play empty playlist ' + f'"{playlist.name}"!')
+            await ctx.send('Couldn\'t play empty playlist ' + f'"{playlist.name}"!')
             return
 
         stream: Optional[playlists.ResumedAudio] = \
