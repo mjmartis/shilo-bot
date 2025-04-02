@@ -17,7 +17,9 @@ from typing import cast, Optional, Any, Coroutine
 # Returns true if the author can command the bot. That is, if the bot is in the
 # same channel as the author.
 def _can_command(ctx: dctx.ApplicationContext) -> bool:
-    return isinstance(ctx.author, discord.Member) and ctx.author.voice != None and ctx.voice_client != None and ctx.author.voice.channel == ctx.voice_client.channel
+    return (isinstance(ctx.author, discord.Member)
+            and ctx.author.voice is not None and ctx.voice_client is not None
+            and ctx.author.voice.channel == ctx.voice_client.channel)
 
 # Returns either the concrete bot name if available, or a generic noun for it.
 def _bot_name(ctx: dctx.ApplicationContext) -> str:
@@ -46,7 +48,8 @@ class ShiloGuild:
 
     # Returns true if bot successfully joined author's voice channel.
     async def Join(self, ctx: dctx.ApplicationContext) -> bool:
-        dest: Optional[discord.VoiceState] = ctx.author.voice if isinstance(ctx.author, discord.Member) else None
+        dest: Optional[discord.VoiceState] = ctx.author.voice if isinstance(
+            ctx.author, discord.Member) else None
 
         # No channel to connect to.
         if not dest:
@@ -69,7 +72,7 @@ class ShiloGuild:
 
         utils.log(utils.LogSeverity.INFO,
                   f'Connected to voice channel "{dest_channel.name}".')
-        await ctx.respond(f'Connected to the voice channel "{dest_channel.name}".')
+        await ctx.respond('Connected to the voice channel ' + f'"{dest_channel.name}".')
         return True
 
     # Leaves the currently-connected channel.
@@ -80,9 +83,10 @@ class ShiloGuild:
             return
         assert ctx.voice_client is not None
 
-        voice_channel_name = f' "{ctx.voice_client.channel.name}"' if isinstance(ctx.voice_client.channel, discord.VoiceChannel) else ''
+        channel_name = f' "{ctx.voice_client.channel.name}"' if isinstance(
+            ctx.voice_client.channel, discord.VoiceChannel) else ''
         utils.log(utils.LogSeverity.INFO,
-            f'Disconnected from voice channel{voice_channel_name}.')
+                  f'Disconnected from voice channel{channel_name}.')
 
         await self._Disconnect(ctx.voice_client)
 
@@ -117,7 +121,8 @@ class ShiloGuild:
         if restart:
             playlist.Restart()
 
-        # Race: "next song" callback executes before we've started the new stream.
+        # Race: "next song" callback executes before we've started the new
+        # stream.
         if self._playlist:
             self._next_callbacks[self._playlist.name].Cancel()
 
@@ -172,7 +177,10 @@ class ShiloGuild:
             await ctx.send(f'Loaded {_track_name(self._playlist)}.')
 
     # Fast-forward the current song.
-    async def FastForward(self, ctx: dctx.ApplicationContext, interval_str: str) -> None:
+    async def FastForward(
+            self,
+            ctx: dctx.ApplicationContext,
+            interval_str: str) -> None:
         if not await self._ReportActivePlaylistControl(ctx):
             return
         assert self._playlist is not None and ctx.voice_client is not None
@@ -180,7 +188,7 @@ class ShiloGuild:
         interval: Optional[datetime.timedelta] = utils.parse_interval(
             interval_str)
         if not interval:
-            await ctx.respond(f'Couldn\'t understand interval "{interval_str}"!')
+            await ctx.respond('Couldn\'t understand interval ' + f'"{interval_str}"!')
             utils.log(utils.LogSeverity.WARNING,
                       f'Cannot fast-forward by bad interval "{interval_str}".')
             return
@@ -257,7 +265,7 @@ class ShiloGuild:
         if not playlist.current_track_name:
             utils.log(utils.LogSeverity.WARNING,
                       f'Tried to play empty playlist "{playlist.name}".')
-            await ctx.respond(f'Couldn\'t play empty playlist "{playlist.name}"!')
+            await ctx.respond('Couldn\'t play empty playlist ' + f'"{playlist.name}"!')
             return
 
         stream: Optional[playlists.ResumedAudio] = \
@@ -296,7 +304,7 @@ class ShiloGuild:
 
         ctx.voice_client.play(stream, after=schedule_next_track)
 
-        # Update for !next, !skip etc.
+        # Update for /next, /skip etc.
         self._playlist = playlist
         self._next_callbacks[playlist.name] = callback
 
@@ -322,7 +330,8 @@ class ShiloGuild:
 
     # Returns true if the current author can command the bot and there is an
     # active playlist. If not, reports to the user.
-    async def _ReportActivePlaylistControl(self, ctx: dctx.ApplicationContext) -> bool:
+    async def _ReportActivePlaylistControl(
+            self, ctx: dctx.ApplicationContext) -> bool:
         if not _can_command(ctx):
             await ctx.respond('You must connect yourself to the same channel ' +
                               f'as {_bot_name(ctx)}!')

@@ -5,7 +5,7 @@ import enum
 import os
 import textwrap
 
-from typing import Awaitable, Any, Coroutine, Iterable, Optional
+from typing import Any, Coroutine, Iterable, Optional
 
 
 # Used to signal the severity of a message, which could lead to different
@@ -67,7 +67,7 @@ def parse_interval(s: str) -> Optional[datetime.timedelta]:
 
         return num * INTERVALS[unit]
 
-    except:
+    except BaseException:
         return None
 
 
@@ -80,7 +80,8 @@ def file_stem(path: str) -> str:
 # Accepts a row-major matrix of strings, and returns the string of the matrix
 # in tabular form. Columns are aligned and have width no longer than the
 # specified wrap width.
-def format_table(table: Iterable[Iterable[str]], wrap_width: int = 80) -> str:
+def format_table(table: Iterable[Iterable[str]],
+                 wrap_width: int = 80) -> str:
     # Dimenstions are: row, col, lines in entry.
     wrapped_table: list[list[list[str]]] = []
 
@@ -120,5 +121,6 @@ def format_table(table: Iterable[Iterable[str]], wrap_width: int = 80) -> str:
 
         padded_table_t.append(padded_col)
 
-    # Join padded entries into row strings, then row strings into an output string.
+    # Join padded entries into row strings, then row strings into an output
+    # string.
     return '\n'.join('\t'.join(row) for row in zip(*padded_table_t))

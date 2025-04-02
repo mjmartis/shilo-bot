@@ -76,7 +76,7 @@ class ResumedAudio(discord.FFmpegOpusAudio):
                 return True
 
             return False
-        except:
+        except BaseException:
             return True
 
     @property

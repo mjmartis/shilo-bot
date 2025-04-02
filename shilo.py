@@ -14,7 +14,10 @@ from typing import Any, cast, Iterator, Optional
 CONFIG_FILE: str = 'shilo.json'
 
 # Strings for the bot help message.
-HELP_MESSAGE: str = 'I am a renowned bard, here to play shuffled music to suit your mood.'
+HELP_MESSAGE: str = (
+    'I am a renowned bard, here to play shuffled music to suit your mood.'
+)
+
 HELP_TABLE: list[list[str]] = [
     ['/join', '', 'Joins the voice channel that you\'re currently in.'],
     ['', '', ''],
@@ -66,10 +69,12 @@ CMD_DESCS = {
 
 # The top-level bot. Responsible for creating independent presences in
 # different guilds and forwarding them commands.
+
+
 class ShiloBot(dcoms.Bot):
-    # I'm including some prefix that will hopefully never match, so that not every
-    # message is passed to my bot. Given I'm using slash commands, I'm not sure
-    # this is necessary.
+    # I'm including some prefix that will hopefully never match, so that not
+    # every message is passed to my bot. Given I'm using slash commands, I'm
+    # not sure this is necessary.
     _CMD_PREFIX = '__shilo'
 
     def __init__(self, playlist_config: dict[str, list[str]]):
@@ -116,7 +121,8 @@ class ShiloBot(dcoms.Bot):
                                         before.channel).guild
 
             # Get the bot's voice client for the right guild.
-            voice_clients = cast(list[discord.VoiceClient], list(self.voice_clients))
+            voice_clients = cast(
+                list[discord.VoiceClient], list(self.voice_clients))
             vcs: Iterator[discord.VoiceClient] = (
                 vc for vc in voice_clients if vc.guild == guild)
 
@@ -187,7 +193,9 @@ class ShiloBot(dcoms.Bot):
         @self.slash_command(description=CMD_DESCS['help'])
         async def help(ctx: dctx.ApplicationContext) -> None:
             utils.log(utils.LogSeverity.INFO, 'Printing help.')
-            await ctx.respond(f'{HELP_MESSAGE}\n' + f'```{utils.format_table(HELP_TABLE, HELP_WIDTH)}```')
+            await ctx.respond(
+                f'{HELP_MESSAGE}\n' +
+                f'```{utils.format_table(HELP_TABLE, HELP_WIDTH)}```')
 
     def _RegisterOnCommandError(self) -> None:
 
@@ -196,9 +204,10 @@ class ShiloBot(dcoms.Bot):
                                    error: dcoms.CommandError) -> None:
             # Benign error: unknown command.
             if isinstance(error, dcoms.CommandNotFound):
-                cmd = f' "{cast(Any, ctx).invoked_with}"' if hasattr(ctx, 'invoked_with') else ''
+                cmd = f' "{cast(Any, ctx).invoked_with}"' if hasattr(
+                    ctx, 'invoked_with') else ''
                 await ctx.respond(
-                    f'Couldn\'t understand command{cmd}! Use /help for instructions.')
+                    f'Couldn\'t understand command{cmd}! ' + 'Use /help for instructions.')
                 utils.log(utils.LogSeverity.WARNING,
                           f'Bad command{cmd} received.')
                 return

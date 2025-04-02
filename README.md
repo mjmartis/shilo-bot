@@ -22,8 +22,7 @@ To use ShiloBot, you must create your own Discord bot account and run the bot fr
 ### Dependencies
 ShiloBot has the following dependencies:
   - python3 (e.g. `apt install python3`)
-  - [pycord](https://pycord.dev) (e.g. `pip3 install py-cord`)
-  - [ffmpeg](https://ffmpeg.org/) (e.g. `apt install ffmpeg`)
+  - pipenv
 
 ### Creating a bot account
 Follow the discord.py instructions for [creating a new bot account](https://discordpy.readthedocs.io/en/stable/discord.html). ShiloBot requires the bot permissions to `Send Messages`, `Connect` and `Speak`.
@@ -31,10 +30,10 @@ Follow the discord.py instructions for [creating a new bot account](https://disc
 ### Configuring
 ShiloBot is configured via the `shilo.json` file in the project directory. The JSON object defined in the file has the `token` attribute which should be set to your bot's Discord token, and a `playlists` attribute specifying the details of each playlist.
 
-The `playlists` object has one attribute per playlist. The name of the attribute is the name of the playlist as it will appear to users (e.g. in the output of the `!list` command). The value of the attribute is a list of glob strings whose matching files together are the contents of the playlist.
+The `playlists` object has one attribute per playlist. The name of the attribute is the name of the playlist as it will appear to users (e.g. in the output of the `/list` command). The value of the attribute is a list of glob strings whose matching files together are the contents of the playlist.
 
 ### Running
-The bot can be launched with the command `python3 shilo.py`.
+You can set up the project via `pipenv sync`. The bot can then be launched with the command `python3 shilo.py`.
 
 # Code structure
 ShiloBot is decomposed into four modules:
@@ -42,3 +41,7 @@ ShiloBot is decomposed into four modules:
   - `guild.py`. The handler for ShiloBot's presence in a single guild. Executes the lion's share of the bot's behaviour.
   - `playlist.py`. Audio- and playlist-specific logic, including an abstract representation of a single playlist.
   - `util.py`. Utility behaviour, such as logging and table formatting.
+
+I used a consistent but fairly arbitrary format for the code. To enforce it, use
+
+`autopep8 --max-line-length 80 --ignore E302,E303 --aggressive --aggressive --in-place --indent-size 4 *.py`
