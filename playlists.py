@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
 import datetime
-import sys
 import random
 import tempfile
 

@@ -5,7 +5,7 @@ import enum
 import os
 import textwrap
 
-from typing import Awaitable, Iterable, Optional
+from typing import Awaitable, Any, Coroutine, Iterable, Optional
 
 
 # Used to signal the severity of a message, which could lead to different
@@ -26,9 +26,9 @@ def log(severity: LogSeverity, message: str) -> None:
 # Helper object holding a callback that can be cancelled.
 class CancellableCoroutine():
 
-    def __init__(self, callback: Awaitable[None]):
+    def __init__(self, callback: Coroutine[None, None, Any]):
         self._cancelled: bool = False
-        self._callback: Awaitable[None] = callback
+        self._callback: Coroutine[None, None, Any] = callback
 
     def Cancel(self):
         self._cancelled = True

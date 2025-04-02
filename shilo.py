@@ -4,6 +4,7 @@ import json
 
 import discord
 import discord.ext.commands as dcoms
+import discord.commands.context as dctx
 
 import guilds
 import utils
@@ -99,7 +100,8 @@ class ShiloBot(dcoms.Bot):
 
         @self.event
         async def on_ready():
-            utils.log(utils.LogSeverity.INFO, f'{self.user.name} connected.')
+            name = self.user.name if self.user else 'Bot'
+            utils.log(utils.LogSeverity.INFO, f'{name} connected.')
 
     def _RegisterOnVoiceStateUpdate(self) -> None:
 
@@ -114,8 +116,9 @@ class ShiloBot(dcoms.Bot):
                                         before.channel).guild
 
             # Get the bot's voice client for the right guild.
+            voice_clients = cast(list[discord.VoiceClient], list(self.voice_clients))
             vcs: Iterator[discord.VoiceClient] = (
-                vc for vc in self.voice_clients if vc.guild == guild)
+                vc for vc in voice_clients if vc.guild == guild)
 
             bot_vc: Optional[discord.VoiceClient] = next(vcs, None)
             if not bot_vc:
@@ -127,20 +130,20 @@ class ShiloBot(dcoms.Bot):
     def _RegisterJoin(self) -> None:
 
         @self.slash_command(description=CMD_DESCS['join'])
-        async def join(ctx: dcoms.Context) -> None:
+        async def join(ctx: dctx.ApplicationContext) -> None:
             await self._EnsureGuild(ctx.guild).Join(ctx)
 
     def _RegisterLeave(self) -> None:
 
         @self.slash_command(description=CMD_DESCS['leave'])
-        async def leave(ctx: dcoms.Context) -> None:
+        async def leave(ctx: dctx.ApplicationContext) -> None:
             await self._EnsureGuild(ctx.guild).Leave(ctx)
 
     def _RegisterStart(self) -> None:
 
         @self.slash_command(description=CMD_DESCS['start'])
         @discord.option('playlist name', type=str, required=False)
-        async def start(ctx: dcoms.Context,
+        async def start(ctx: dctx.ApplicationContext,
                         playlist_name: Optional[str] = None) -> None:
             await self._EnsureGuild(ctx.guild).Start(ctx, playlist_name)
 
@@ -148,56 +151,56 @@ class ShiloBot(dcoms.Bot):
 
         @self.slash_command(description=CMD_DESCS['restart'])
         @discord.option('playlist name', type=str, required=False)
-        async def restart(ctx: dcoms.Context,
+        async def restart(ctx: dctx.ApplicationContext,
                           playlist_name: Optional[str] = None) -> None:
             await self._EnsureGuild(ctx.guild).Restart(ctx, playlist_name)
 
     def _RegisterStop(self) -> None:
 
         @self.slash_command(description=CMD_DESCS['stop'])
-        async def stop(ctx: dcoms.Context) -> None:
+        async def stop(ctx: dctx.ApplicationContext) -> None:
             await self._EnsureGuild(ctx.guild).Stop(ctx)
 
     def _RegisterNext(self) -> None:
 
         @self.slash_command(description=CMD_DESCS['next'])
-        async def next(ctx: dcoms.Context) -> None:
+        async def next(ctx: dctx.ApplicationContext) -> None:
             await self._EnsureGuild(ctx.guild).Next(ctx)
 
     def _RegisterFastForward(self) -> None:
 
         @self.slash_command(description=CMD_DESCS['ff'])
         @discord.option('interval', type=str, required=True)
-        async def ff(ctx: dcoms.Context, interval: str) -> None:
+        async def ff(ctx: dctx.ApplicationContext, interval: str) -> None:
             await self._EnsureGuild(ctx.guild).FastForward(ctx, interval)
 
     def _RegisterList(self) -> None:
 
         @self.slash_command(description=CMD_DESCS['list'])
         @discord.option('playlist name', description=CMD_DESCS['list'])
-        async def list(ctx: dcoms.Context,
+        async def list(ctx: dctx.ApplicationContext,
                        playlist_name: Optional[str] = None) -> None:
             await self._EnsureGuild(ctx.guild).List(ctx, playlist_name)
 
     def _RegisterHelp(self) -> None:
 
         @self.slash_command(description=CMD_DESCS['help'])
-        async def help(ctx: dcoms.Context) -> None:
+        async def help(ctx: dctx.ApplicationContext) -> None:
             utils.log(utils.LogSeverity.INFO, 'Printing help.')
             await ctx.respond(f'{HELP_MESSAGE}\n' + f'```{utils.format_table(HELP_TABLE, HELP_WIDTH)}```')
 
     def _RegisterOnCommandError(self) -> None:
 
         @self.event
-        async def on_command_error(ctx: dcoms.Context,
+        async def on_command_error(ctx: dctx.ApplicationContext,
                                    error: dcoms.CommandError) -> None:
             # Benign error: unknown command.
             if isinstance(error, dcoms.CommandNotFound):
+                cmd = f' "{cast(Any, ctx).invoked_with}"' if hasattr(ctx, 'invoked_with') else ''
                 await ctx.respond(
-                    f'Couldn\'t understand command "{ctx.invoked_with}"! ' +
-                    'Use !help for instructions.')
+                    f'Couldn\'t understand command{cmd}! Use /help for instructions.')
                 utils.log(utils.LogSeverity.WARNING,
-                          f'Bad command "{ctx.invoked_with}" received.')
+                          f'Bad command{cmd} received.')
                 return
 
             # Otherwise, an unexpected error while running a command.
