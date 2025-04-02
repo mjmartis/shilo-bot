@@ -186,7 +186,7 @@ class ShiloGuild:
             # song.
             ctx.voice_client.stop()
         else:
-            self._playlist.NextTrack()
+            self._playlist.Skip()
             await ctx.send(f'Loaded {_track_name(self._playlist)}.')
 
     # Fast-forward the current song.
@@ -229,8 +229,8 @@ class ShiloGuild:
             playlist_names: list[str] = list(self._playlists.keys())
             current_index: int = playlist_names.index(
                 self._playlist.name) if self._playlist else -1
-            table: str = playlists.playlist_listing(playlist_names,
-                                                    current_index)
+            table: str = playlists.get_playlist_listing(playlist_names,
+                                                        current_index)
             await ctx.respond(f'```\n{table}\n```')
             return
 
@@ -243,7 +243,7 @@ class ShiloGuild:
             return
 
         await ctx.respond(
-            f'```\n{self._playlists[playlist_name].TrackListing()}\n```')
+            f'```\n{self._playlists[playlist_name].GetTrackListing()}\n```')
 
     # Leave the voice channel once everyone else has.
     async def OnVoiceStateUpdate(self, bot_voice_client: discord.VoiceClient,
@@ -282,8 +282,7 @@ class ShiloGuild:
             await ctx.send('Couldn\'t play empty playlist ' + f'"{playlist.name}"!')
             return
 
-        stream: Optional[playlists.ResumedAudio] = \
-            await playlist.MakeCurrentTrackStream()
+        stream: Optional[playlists.ResumedAudio] = await playlist.MakeStream()
         if not stream:
             utils.log(utils.LogSeverity.ERROR,
                       f'Couldn\'t play {_track_name(playlist)}.')
@@ -304,7 +303,7 @@ class ShiloGuild:
                 callback.Cancel()
                 return
 
-            if playlist.CurrentTrackStreamHasError():
+            if playlist.StreamHasError():
                 callback.Cancel()
                 print_err: Coroutine[None, None, Any] = ctx.send(
                     f'Error playing {_track_name(playlist)}. Stopping.')
@@ -329,7 +328,7 @@ class ShiloGuild:
     # Play the next track of the given playlist.
     async def _PlayNextTrack(self, ctx: dctx.ApplicationContext,
                              playlist: playlists.Playlist) -> None:
-        playlist.NextTrack()
+        playlist.Skip()
         await self._PlayCurrent(ctx, playlist)
 
     # Stop the currently playing song, de-select the current playlist and
