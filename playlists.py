@@ -38,7 +38,7 @@ class ResumedAudio(discord.FFmpegOpusAudio):
 
     # TODO: foward args if more sophisticated construction is needed.
     super().__init__(filename, bitrate=self._TARGET_BITRATE, stderr=self._stderr,
-                     options=f'-bufsize {2*self._TARGET_BITRATE}k',
+                     options=f'-filter:a "dynaudnorm=p=0.9:s=5" -bufsize {2*self._TARGET_BITRATE}k',
                      before_options=f'-ss {str(elapsed)}')
 
     self._elapsed: datetime.timedelta = elapsed
