@@ -5,6 +5,7 @@ name = "pypi"
 
 [packages]
 py-cord = "~=2.6.1"
+pynacl = "*"
 
 [dev-packages]
 autopep8 = "2.3.2"
