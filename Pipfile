@@ -4,11 +4,10 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-py-cord = "~=2.6.1"
-pynacl = "*"
+pynacl = "1.6.0"
+py-cord = {editable = true, ref = "v2.7.0rc2", git = "https://github.com/Pycord-Development/pycord.git"}
 
 [dev-packages]
-autopep8 = "2.3.2"
 
 [requires]
-python_version = "3.9"
+python_version = "3.10"
