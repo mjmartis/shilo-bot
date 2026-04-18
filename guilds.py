@@ -344,7 +344,9 @@ class ShiloGuild:
     await self._PlayCurrent(ctx, playlist)
 
   async def _Disconnect(self, voice_client: discord.VoiceClient) -> None:
-    """Stop the currently playing song, de-select the current playlist and disconnect from the current voice channel."""
+    """Stop the currently playing song, de-select the current playlist and disconnect from the
+    current voice channel.
+    """
 
     if self._playlist:
       self._next_callbacks[self._playlist.name].Cancel()
