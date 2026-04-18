@@ -1,0 +1,17 @@
+[project]
+name = "shilo-bot"
+version = "0.1.0"
+description = "A Discord bot that plays shuffled playlists from its host's local storage"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "py-cord[voice]",
+]
+
+[tool.uv.sources]
+py-cord = { git = "https://github.com/Pycord-Development/pycord", rev = "fc25e1b96292a4471c5ed0c023863c11968c0b46" }
+
+[dependency-groups]
+dev = [
+    "autopep8>=2.3.2",
+]

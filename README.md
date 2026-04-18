@@ -21,8 +21,8 @@ To use ShiloBot, you must create your own Discord bot account and run the bot fr
 
 ### Dependencies
 ShiloBot has the following dependencies:
-  - python3 (e.g. `apt install python3`)
-  - pipenv
+  - python 3.12
+  - uv
 
 ### Creating a bot account
 Follow the discord.py instructions for [creating a new bot account](https://discordpy.readthedocs.io/en/stable/discord.html). ShiloBot requires the bot permissions to `Send Messages`, `Connect` and `Speak`.
@@ -33,7 +33,7 @@ ShiloBot is configured via the `shilo.json` file in the project directory. The J
 The `playlists` object has one attribute per playlist. The name of the attribute is the name of the playlist as it will appear to users (e.g. in the output of the `/list` command). The value of the attribute is a list of glob strings whose matching files together are the contents of the playlist.
 
 ### Running
-You can set up the project via `pipenv sync`. The bot can then be launched with the command `python3 shilo.py`.
+You can set up the project via `uv sync`. The bot can then be launched with the command `uv run python3 shilo.py`.
 
 # Code structure
 ShiloBot is decomposed into four modules:
