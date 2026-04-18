@@ -54,18 +54,22 @@ class ShiloGuild:
   # Returns true if bot successfully joined author's voice channel.
   async def Join(self, ctx: dctx.ApplicationContext,
                  announce: bool = False) -> JoinResult:
+    # Joining a voice channel seems to take a few seconds, so we defer our response to avoid
+    # timeout errors.
+    await ctx.defer()
+
     dest: Optional[discord.VoiceState] = ctx.author.voice if isinstance(
         ctx.author, discord.Member) else None
 
     # No channel to connect to.
     if not dest:
-      await ctx.respond('You must connect to a voice channel!')
+      await ctx.followup.send('You must connect to a voice channel!')
       return JoinResult.FAIL
 
     # Already connected to correct channel.
     if ctx.voice_client and ctx.voice_client.channel == dest.channel:
       if announce:
-        await ctx.respond('Already connected!')
+        await ctx.followup.send('Already connected!')
       return JoinResult.ALREADY_JOINED
 
     if ctx.voice_client:
@@ -80,13 +84,15 @@ class ShiloGuild:
 
     utils.log(utils.LogSeverity.INFO,
               f'Connected to voice channel "{dest_channel.name}".')
-    await ctx.respond(f'Connected to the voice channel "{dest_channel.name}".')
+    await ctx.followup.send(f'Connected to the voice channel "{dest_channel.name}".')
     return JoinResult.SUCCESS
 
   # Leaves the currently-connected channel.
   async def Leave(self, ctx: dctx.ApplicationContext) -> None:
+    await ctx.defer()
+
     if not _can_command(ctx):
-      await ctx.respond(f'You must connect yourself to the same channel as {_bot_name(ctx)}!')
+      await ctx.followup.send(f'You must connect yourself to the same channel as {_bot_name(ctx)}!')
       return
     assert ctx.voice_client is not None
 
@@ -97,7 +103,7 @@ class ShiloGuild:
 
     await self._Disconnect(ctx.voice_client)
 
-    await ctx.respond('Disconnected.')
+    await ctx.followup.send('Disconnected.')
 
   # Start playing the current playlist (or the given playlist).
   async def Start(self, ctx: dctx.ApplicationContext, playlist_name: Optional[str] = None,
@@ -106,8 +112,10 @@ class ShiloGuild:
     if join_result == JoinResult.FAIL:
       return
 
-    # Make sure only our first message is a response type.
-    def broadcast(msg): return ctx.respond(
+    # We start a deferred message in `Join`. However, we only populate it with content if we
+    # performed a join. In the case that we did, we should output our response in a new message.
+    # In the case that we didn't, we should output our response as the original deferred message.
+    def broadcast(msg): return ctx.followup.send(
         msg) if join_result == JoinResult.ALREADY_JOINED else ctx.send(msg)
 
     resolved_name: Optional[str] = (

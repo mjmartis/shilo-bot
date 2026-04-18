@@ -31,13 +31,13 @@ class ResumedAudio(discord.FFmpegOpusAudio):
     # For error reporting.
     self._filename: str = utils.file_stem(filename)
 
-    self._stderr: BinaryIO = tempfile.TemporaryFile('a+b')
+    self._resumed_stderr: BinaryIO = tempfile.TemporaryFile('a+b')
 
     # Final error status. Used once _stderr has been cleaned up.
     self._final_error: Optional[bool] = None
 
     # TODO: foward args if more sophisticated construction is needed.
-    super().__init__(filename, bitrate=self._TARGET_BITRATE, stderr=self._stderr,
+    super().__init__(filename, bitrate=self._TARGET_BITRATE, stderr=self._resumed_stderr,
                      options=f'-filter:a "dynaudnorm=p=0.9:s=5" -bufsize {2*self._TARGET_BITRATE}k',
                      before_options=f'-ss {str(elapsed)}')
 
@@ -54,7 +54,7 @@ class ResumedAudio(discord.FFmpegOpusAudio):
     # Save error state so that we can still query error even though our resources have been cleaned
     # up.
     self._final_error = self.HasError()
-    self._stderr.close()
+    self._resumed_stderr.close()
 
   # Returns True if ffmpeg stderr contains a known playback error.
   def HasError(self) -> bool:
@@ -62,8 +62,8 @@ class ResumedAudio(discord.FFmpegOpusAudio):
       return self._final_error
 
     try:
-      self._stderr.seek(0)
-      err_string: str = self._stderr.read().decode('utf8')
+      self._resumed_stderr.seek(0)
+      err_string: str = self._resumed_stderr.read().decode('utf8')
 
       if 'Invalid data' in err_string:
         utils.log(utils.LogSeverity.ERROR, f'Error reading "{self._filename}".')
