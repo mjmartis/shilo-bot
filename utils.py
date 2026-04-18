@@ -1,30 +1,10 @@
 #!/usr/bin/python3
 
 import datetime
-import enum
 import os
 import textwrap
 
 from typing import Any, Coroutine, Iterable, Optional
-
-
-class LogSeverity(enum.Enum):
-  """Used to signal the severity of a message.
-
-  This could lead to different logging behaviour (e.g. a stack trace) in the future.
-  """
-
-  INFO = 1
-  WARNING = 2
-  ERROR = 3
-  FATAL = 4
-
-
-def log(severity: LogSeverity, message: str) -> None:
-  """Print a message to stdout along with the time and an indicator of severity."""
-
-  time_str: str = datetime.datetime.now().strftime("%Y-%m-%d %X")
-  print(f"{time_str} [{severity.name}] {message}", flush=True)
 
 
 class CancellableCoroutine:

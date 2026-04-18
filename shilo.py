@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import logging
 
 from typing import Any, cast, Iterator, Optional
 
@@ -80,7 +81,7 @@ _CMD_ARG_DESCS = {
 
 class ShiloBot(dcoms.Bot):
   """The top-level bot.
-  
+
   Responsible for creating independent presences in different guilds and forwarding them commands.
   """
 
@@ -116,7 +117,7 @@ class ShiloBot(dcoms.Bot):
     @self.event
     async def on_ready():
       name = self.user.name if self.user else "Bot"
-      utils.log(utils.LogSeverity.INFO, f"{name} connected.")
+      logging.info(f"{name} connected.")
 
   def _RegisterOnVoiceStateUpdate(self) -> None:
 
@@ -203,7 +204,7 @@ class ShiloBot(dcoms.Bot):
 
     @self.slash_command(description=_CMD_DESCS["help"])
     async def help(ctx: dctx.ApplicationContext) -> None:
-      utils.log(utils.LogSeverity.INFO, "Printing help.")
+      logging.info("Printing help.")
       await ctx.respond(f"{_HELP_MESSAGE}\n```{utils.format_table(_HELP_TABLE, _HELP_WIDTH)}```")
 
   def _RegisterOnCommandError(self) -> None:
@@ -214,24 +215,31 @@ class ShiloBot(dcoms.Bot):
       if isinstance(error, dcoms.CommandNotFound):
         cmd = f' "{cast(Any, ctx).invoked_with}"' if hasattr(ctx, "invoked_with") else ""
         await ctx.respond(f"Couldn't understand command{cmd}! Use /help for instructions.")
-        utils.log(utils.LogSeverity.WARNING, f"Bad command{cmd} received.")
+        logging.warning(f"Bad command{cmd} received.")
         return
 
       # Otherwise, an unexpected error while running a command.
       await ctx.respond("Command failed! Internal error.")
-      utils.log(utils.LogSeverity.ERROR, f'Internal error: "{error}".')
+      logging.error(f'Internal error: "{error}".')
 
   def _EnsureGuild(self, g: discord.Guild) -> guilds.ShiloGuild:
     """Retrieve the object for the given guild, creating a new one if necessary."""
 
     if g.id not in self._guilds:
       self._guilds[g.id] = guilds.ShiloGuild(self._playlist_config)
-      utils.log(utils.LogSeverity.INFO, f'Initialising for guild "{g.name}".')
+      logging.info(f'Initialising for guild "{g.name}".')
 
     return self._guilds[g.id]
 
 
 def main() -> None:
+  logging.basicConfig(
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %X",
+    level=logging.INFO,
+  )
+  logging.getLogger("discord").setLevel(logging.WARNING)
+
   parser = argparse.ArgumentParser()
   parser.add_argument("--config", type=str, default=_CONFIG_FILE)
   args = parser.parse_args()
@@ -239,7 +247,7 @@ def main() -> None:
   config: dict[str, Any] = json.loads(open(args.config, "r").read())
   bot: ShiloBot = ShiloBot(config["playlists"])
 
-  utils.log(utils.LogSeverity.INFO, "Connecting to Discord.")
+  logging.info("Connecting to Discord.")
   bot.run(config["token"])
 
 

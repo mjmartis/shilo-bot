@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import datetime
+import logging
 import random
 import tempfile
 
@@ -75,7 +76,7 @@ class ResumedAudio(discord.FFmpegOpusAudio):
       err_string: str = self._resumed_stderr.read().decode("utf8")
 
       if "Invalid data" in err_string:
-        utils.log(utils.LogSeverity.ERROR, f'Error reading "{self._filename}".')
+        logging.error(f'Error reading "{self._filename}".')
         return True
 
       return False
@@ -101,7 +102,7 @@ class Playlist:
   def Restart(self) -> None:
     """Clear current song and reshuffle playlist."""
 
-    utils.log(utils.LogSeverity.INFO, f'Restarting playlist "{self._name}".')
+    logging.info(f'Restarting playlist "{self._name}".')
 
     self._index: int = 0
     self._cur_src: Optional[ResumedAudio] = None
@@ -119,10 +120,10 @@ class Playlist:
       return None
 
     if self._cur_src:
-      utils.log(utils.LogSeverity.INFO, f'Resuming "{self.current_track_name}".')
+      logging.info(f'Resuming "{self.current_track_name}".')
       self._cur_src = ResumedAudio(self._fs[self._index], self._cur_src.elapsed + self._ff)
     else:
-      utils.log(utils.LogSeverity.INFO, f'Starting "{self.current_track_name}".')
+      logging.info(f'Starting "{self.current_track_name}".')
       self._cur_src = ResumedAudio(self._fs[self._index], self._ff)
 
     # When resuming the audio, the current fast-forward amount is already inherited from the
@@ -133,7 +134,7 @@ class Playlist:
 
   def FastForward(self, duration: datetime.timedelta) -> None:
     """Skip forward into the track for subsequent calls to MakeStream.
-    
+
     Existing stream objects are unaffected."""
 
     if self._index >= len(self._fs):
