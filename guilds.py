@@ -21,9 +21,12 @@ class JoinResult(enum.Enum):
   ALREADY_JOINED = enum.auto()
 
 
-# Returns true if the author can command the bot. That is, if the bot is in the same channel as the
-# author.
 def _can_command(ctx: dctx.ApplicationContext) -> bool:
+  """Return true if the author can command the bot.
+
+  That is, if the bot is in the same channel as the author.
+  """
+
   return (
     isinstance(ctx.author, discord.Member)
     and ctx.author.voice is not None
@@ -32,14 +35,15 @@ def _can_command(ctx: dctx.ApplicationContext) -> bool:
   )
 
 
-# Returns either the concrete bot name if available, or a generic noun for it.
 def _bot_name(ctx: dctx.ApplicationContext) -> str:
+  """Return either the concrete bot name if available, or a generic noun for it."""
+
   return "the bot" if ctx.bot.user is None else ctx.bot.user.name
 
 
-# Returns the quoted name of the current track of the given playlist, or else the unquoted word
-# "track".
 def _track_name(playlist: Optional[playlists.Playlist]) -> str:
+  """Return the quoted name of the current track of the given playlist, or else the word "track"."""
+
   return (
     f'"{playlist.current_track_name}"'
     if playlist is not None and playlist.current_track_name
@@ -47,9 +51,12 @@ def _track_name(playlist: Optional[playlists.Playlist]) -> str:
   )
 
 
-# Represents the presence of ShiloBot in one guild. This allows for independent playback (e.g.
-# position in playlists) per guild.
 class ShiloGuild:
+  """Represents the presence of ShiloBot in one guild.
+
+  This allows for independent playback (e.g. position in playlists) per guild.
+  """
+
   def __init__(self, playlist_config: dict[str, list[str]]):
     self._playlists: dict[str, playlists.Playlist] = {}
     for name, globs in playlist_config.items():
@@ -59,8 +66,9 @@ class ShiloGuild:
 
     self._next_callbacks: dict[str, utils.CancellableCoroutine] = {}
 
-  # Returns true if bot successfully joined author's voice channel.
   async def Join(self, ctx: dctx.ApplicationContext, announce: bool = False) -> JoinResult:
+    """Return true if bot successfully joined author's voice channel."""
+
     # Joining a voice channel seems to take a few seconds, so we defer our response to avoid
     # timeout errors.
     await ctx.defer()
@@ -93,8 +101,9 @@ class ShiloGuild:
     await ctx.followup.send(f'Connected to the voice channel "{dest_channel.name}".')
     return JoinResult.SUCCESS
 
-  # Leaves the currently-connected channel.
   async def Leave(self, ctx: dctx.ApplicationContext) -> None:
+    """Leave the currently-connected channel."""
+
     await ctx.defer()
 
     if not _can_command(ctx):
@@ -113,10 +122,11 @@ class ShiloGuild:
 
     await ctx.followup.send("Disconnected.")
 
-  # Start playing the current playlist (or the given playlist).
   async def Start(
     self, ctx: dctx.ApplicationContext, playlist_name: Optional[str] = None, restart: bool = False
   ) -> None:
+    """Start playing the current playlist (or the given playlist)."""
+
     join_result: JoinResult = await self.Join(ctx)
     if join_result == JoinResult.FAIL:
       return
@@ -152,14 +162,16 @@ class ShiloGuild:
 
     await self._PlayCurrent(ctx, playlist)
 
-  # Restart the current (or a given) playlist.
   async def Restart(
     self, ctx: dctx.ApplicationContext, playlist_name: Optional[str] = None
   ) -> None:
+    """Restart the current (or a given) playlist."""
+
     await self.Start(ctx, playlist_name, True)
 
-  # Stop the currently-playing playlist.
   async def Stop(self, ctx: dctx.ApplicationContext) -> None:
+    """Stop the currently-playing playlist."""
+
     if not _can_command(ctx):
       await ctx.respond(f"You must connect yourself to the same channel as {_bot_name(ctx)}!")
       return
@@ -180,8 +192,9 @@ class ShiloGuild:
     utils.log(utils.LogSeverity.INFO, f"Playback of {_track_name(self._playlist)} stopped.")
     await ctx.respond(f'Stopped playlist "{self._playlist.name}".')
 
-  # Move to the next track in the current playlist.
   async def Next(self, ctx: dctx.ApplicationContext) -> None:
+    """Move to the next track in the current playlist."""
+
     if not await self._ReportActivePlaylistControl(ctx):
       return
     assert self._playlist is not None and ctx.voice_client is not None
@@ -196,8 +209,9 @@ class ShiloGuild:
       self._playlist.Skip()
       await ctx.send(f"Loaded {_track_name(self._playlist)}.")
 
-  # Fast-forward the current song.
   async def FastForward(self, ctx: dctx.ApplicationContext, interval_str: str) -> None:
+    """Fast-forward the current song."""
+
     if not await self._ReportActivePlaylistControl(ctx):
       return
     assert self._playlist is not None and ctx.voice_client is not None
@@ -219,8 +233,9 @@ class ShiloGuild:
 
       await self._PlayCurrent(ctx, self._playlist, announce=False)
 
-  # List playlists or the tracks in an individual playlist.
   async def List(self, ctx: dctx.ApplicationContext, playlist_name: Optional[str] = None) -> None:
+    """List playlists or the tracks in an individual playlist."""
+
     # Print playlist list.
     if not playlist_name:
       playlist_names: list[str] = list(self._playlists.keys())
@@ -239,13 +254,14 @@ class ShiloGuild:
 
     await ctx.respond(f"```\n{self._playlists[playlist_name].GetTrackListing()}\n```")
 
-  # Leave the voice channel once everyone else has.
   async def OnVoiceStateUpdate(
     self,
     bot_voice_client: discord.VoiceClient,
     before: discord.VoiceState,
     after: discord.VoiceState,
   ) -> None:
+    """Leave the voice channel once everyone else has."""
+
     # TODO: find out how to annotate with a Connectable type.
     bot_channel = cast(discord.VoiceChannel, bot_voice_client.channel)
 
@@ -265,11 +281,14 @@ class ShiloGuild:
 
     await self._Disconnect(bot_voice_client)
 
-  # Play the current entry from the given playlist over the bot voice channel. The bot must be
-  # connected to some voice channel.
   async def _PlayCurrent(
     self, ctx: dctx.ApplicationContext, playlist: playlists.Playlist, announce: bool = True
   ) -> None:
+    """Play the current entry from the given playlist over the bot voice channel.
+
+    The bot must be connected to some voice channel.
+    """
+
     assert ctx.voice_client is not None
 
     if not playlist.current_track_name:
@@ -319,16 +338,17 @@ class ShiloGuild:
     if announce:
       await ctx.send(f"Playing {_track_name(playlist)}.")
 
-  # Play the next track of the given playlist.
   async def _PlayNextTrack(
     self, ctx: dctx.ApplicationContext, playlist: playlists.Playlist
   ) -> None:
+    """Play the next track of the given playlist."""
+
     playlist.Skip()
     await self._PlayCurrent(ctx, playlist)
 
-  # Stop the currently playing song, de-select the current playlist and disconnect from the current
-  # voice channel.
   async def _Disconnect(self, voice_client: discord.VoiceClient) -> None:
+    """Stop the currently playing song, de-select the current playlist and disconnect from the current voice channel."""
+
     if self._playlist:
       self._next_callbacks[self._playlist.name].Cancel()
     voice_client.stop()
@@ -336,9 +356,12 @@ class ShiloGuild:
 
     await voice_client.disconnect()
 
-  # Returns true if the current author can command the bot and there is an active playlist. If not,
-  # reports to the user.
   async def _ReportActivePlaylistControl(self, ctx: dctx.ApplicationContext) -> bool:
+    """Return true if the current author can command the bot and there is an active playlist.
+
+    If not, report so to the user.
+    """
+
     if not _can_command(ctx):
       await ctx.respond(f"You must connect yourself to the same channel as {_bot_name(ctx)}!")
       return False

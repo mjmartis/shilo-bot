@@ -8,23 +8,28 @@ import textwrap
 from typing import Any, Coroutine, Iterable, Optional
 
 
-# Used to signal the severity of a message, which could lead to different logging behaviour (e.g. a
-# stack trace) in the future.
 class LogSeverity(enum.Enum):
+  """Used to signal the severity of a message.
+
+  This could lead to different logging behaviour (e.g. a stack trace) in the future.
+  """
+
   INFO = 1
   WARNING = 2
   ERROR = 3
   FATAL = 4
 
 
-# Prints a message to stdout along with the time and an indicator of severity.
 def log(severity: LogSeverity, message: str) -> None:
+  """Print a message to stdout along with the time and an indicator of severity."""
+
   time_str: str = datetime.datetime.now().strftime("%Y-%m-%d %X")
   print(f"{time_str} [{severity.name}] {message}", flush=True)
 
 
-# Helper object holding a callback that can be cancelled.
 class CancellableCoroutine:
+  """Helper object holding a callback that can be cancelled."""
+
   def __init__(self, callback: Coroutine[None, None, Any]):
     self._cancelled: bool = False
     self._callback: Coroutine[None, None, Any] = callback
@@ -40,8 +45,9 @@ class CancellableCoroutine:
     await self._callback
 
 
-# Basic parsing of human-readable intervals like '1s', '10mins'.
 def parse_interval(s: str) -> Optional[datetime.timedelta]:
+  """Parse a basic human-readable interval like "1s", "10mins"."""
+
   INTERVALS: dict[str, datetime.timedelta] = {
     "s": datetime.timedelta(seconds=1),
     "sec": datetime.timedelta(seconds=1),
@@ -70,16 +76,20 @@ def parse_interval(s: str) -> Optional[datetime.timedelta]:
     return None
 
 
-# Returns the basename of the path without any extension.
 def file_stem(path: str) -> str:
+  """Return the basename of the path without any extension."""
+
   basename: str = os.path.basename(path)
   return basename.split(".")[0]
 
 
-# Accepts a row-major matrix of strings, and returns the string of the matrix in tabular form.
-# Columns are aligned and have width no longer than the specified wrap width.
 def format_table(table: Iterable[Iterable[str]], wrap_width: int = 80) -> str:
-  # Dimenstions are: row, col, lines in entry.
+  """Accept a row-major matrix of strings, and return the string of the matrix in tabular form.
+
+  Columns are aligned and have width no longer than the specified wrap width.
+  """
+
+  # Dimensions are: row, col, lines in entry.
   wrapped_table: list[list[list[str]]] = []
 
   # First, wrap each entry and make sure all entries on a row have the same number of lines.

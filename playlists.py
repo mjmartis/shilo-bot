@@ -11,19 +11,23 @@ import discord
 import utils
 
 
-# Returns a format string with lines of the form:
-#   [1-indexed row number] [entry] [marker]
-#
-# Where marker is a text "arrow" pointing to the specified index.
 def _format_listing(entries: list[str], index: int) -> str:
+  """Return a format string with lines of the form:
+
+    [1-indexed row number] [entry] [marker]
+
+  Where marker is a text "arrow" pointing to the specified index.
+  """
+
   nums = [str(i + 1) + "." for i in range(len(entries))]
   markers = ["[<]" if i == index else "" for i in range(len(entries))]
 
   return utils.format_table(zip(*[nums, entries, markers]))
 
 
-# Wrapper around FFmpegOpusAudio that counts the number of milliseconds streamed so far.
 class ResumedAudio(discord.FFmpegOpusAudio):
+  """Wrapper around FFmpegOpusAudio that counts the number of milliseconds streamed so far."""
+
   _TARGET_BITRATE: int = 96
   _READ_AUDIO_CHUNK_TIME: datetime.timedelta = datetime.timedelta(milliseconds=20)
 
@@ -60,8 +64,9 @@ class ResumedAudio(discord.FFmpegOpusAudio):
     self._final_error = self.HasError()
     self._resumed_stderr.close()
 
-  # Returns True if ffmpeg stderr contains a known playback error.
   def HasError(self) -> bool:
+    """Return true if ffmpeg stderr contains a known playback error."""
+
     if self._final_error is not None:
       return self._final_error
 
@@ -82,8 +87,9 @@ class ResumedAudio(discord.FFmpegOpusAudio):
     return self._elapsed
 
 
-# Maintains a cursor in a list of music files and exposes an audio stream for the current file.
 class Playlist:
+  """Maintain a cursor in a list of music files and expose an audio stream for the current file."""
+
   def __init__(self, name: str, fs: list[str]):
     # Make copy.
     self._name: str = name
@@ -92,8 +98,9 @@ class Playlist:
     # Start shuffled.
     self.Restart()
 
-  # Clear current song and reshuffle playlist.
   def Restart(self) -> None:
+    """Clear current song and reshuffle playlist."""
+
     utils.log(utils.LogSeverity.INFO, f'Restarting playlist "{self._name}".')
 
     self._index: int = 0
@@ -101,11 +108,13 @@ class Playlist:
     self._ff: datetime.timedelta = datetime.timedelta()
     random.shuffle(self._fs)
 
-  # Returns a new stream that plays the track from the position last left off by any previous
-  # stream, plus any subsequent fast-forwarding.
-  #
-  # Caller is responsible for cleaning up resources for the returned stream.
   async def MakeStream(self) -> Optional[ResumedAudio]:
+    """Return a new stream that plays the track from the position last left off by any previous
+    stream, plus any subsequent fast-forwarding.
+
+    Caller is responsible for cleaning up resources for the returned stream.
+    """
+
     if self._index >= len(self._fs):
       return None
 
@@ -122,9 +131,11 @@ class Playlist:
 
     return self._cur_src
 
-  # Skips forward into the track for subsequent calls to MakeStream. Existing stream objects are
-  # unaffected.
   def FastForward(self, duration: datetime.timedelta) -> None:
+    """Skip forward into the track for subsequent calls to MakeStream.
+    
+    Existing stream objects are unaffected."""
+
     if self._index >= len(self._fs):
       return
 
@@ -133,8 +144,9 @@ class Playlist:
   def StreamHasError(self) -> bool:
     return self._index >= len(self._fs) or self._cur_src is not None and self._cur_src.HasError()
 
-  # Move to the next song, reshuffling and starting again if there isn't one.
   def Skip(self) -> None:
+    """Move to the next song, reshuffling and starting again if there isn't one."""
+
     self._index += 1
 
     if self._index >= len(self._fs):
@@ -144,8 +156,9 @@ class Playlist:
     self._cur_src = None
     self._ff = datetime.timedelta()
 
-  # Returns a full track listing with a cursor next to the currently-playing track.
   def GetTrackListing(self) -> str:
+    """Return a full track listing with a cursor next to the currently-playing track."""
+
     titles: list[str] = [utils.file_stem(fn) for fn in self._fs]
     return f"{self._name}:\n\n" + _format_listing(titles, self._index)
 
@@ -158,6 +171,7 @@ class Playlist:
     return None if not self._fs else utils.file_stem(self._fs[self._index])
 
 
-# Resturns a playlist listing. Puts a cursor next to one "index" playlist.
-def get_playlist_listing(playlists, index):
+def get_playlist_listing(playlists: list[str], index: int):
+  """Return a playlist listing. Put a cursor next to one "index" playlist."""
+
   return "Playlists:\n\n" + _format_listing(playlists, index)

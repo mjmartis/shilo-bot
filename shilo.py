@@ -78,9 +78,12 @@ _CMD_ARG_DESCS = {
 }
 
 
-# The top-level bot. Responsible for creating independent presences in different guilds and
-# forwarding them commands.
 class ShiloBot(dcoms.Bot):
+  """The top-level bot.
+  
+  Responsible for creating independent presences in different guilds and forwarding them commands.
+  """
+
   # I'm including some prefix that will hopefully never match, so that not every message is passed
   # to my bot. Given I'm using slash commands, I'm not sure this is necessary.
   _CMD_PREFIX = "__shilo"
@@ -218,8 +221,9 @@ class ShiloBot(dcoms.Bot):
       await ctx.respond("Command failed! Internal error.")
       utils.log(utils.LogSeverity.ERROR, f'Internal error: "{error}".')
 
-  # Retrieve the object for the given guild, creating a new one if necessary.
   def _EnsureGuild(self, g: discord.Guild) -> guilds.ShiloGuild:
+    """Retrieve the object for the given guild, creating a new one if necessary."""
+
     if g.id not in self._guilds:
       self._guilds[g.id] = guilds.ShiloGuild(self._playlist_config)
       utils.log(utils.LogSeverity.INFO, f'Initialising for guild "{g.name}".')
