@@ -10,13 +10,14 @@ import discord
 
 import utils
 
+
 # Returns a format string with lines of the form:
 #   [1-indexed row number] [entry] [marker]
 #
 # Where marker is a text "arrow" pointing to the specified index.
 def _format_listing(entries: list[str], index: int) -> str:
-  nums = [str(i + 1) + '.' for i in range(len(entries))]
-  markers = ['[<]' if i == index else '' for i in range(len(entries))]
+  nums = [str(i + 1) + "." for i in range(len(entries))]
+  markers = ["[<]" if i == index else "" for i in range(len(entries))]
 
   return utils.format_table(zip(*[nums, entries, markers]))
 
@@ -24,22 +25,25 @@ def _format_listing(entries: list[str], index: int) -> str:
 # Wrapper around FFmpegOpusAudio that counts the number of milliseconds streamed so far.
 class ResumedAudio(discord.FFmpegOpusAudio):
   _TARGET_BITRATE: int = 96
-  _READ_AUDIO_CHUNK_TIME: datetime.timedelta = datetime.timedelta(
-      milliseconds=20)
+  _READ_AUDIO_CHUNK_TIME: datetime.timedelta = datetime.timedelta(milliseconds=20)
 
   def __init__(self, filename: str, elapsed: datetime.timedelta):
     # For error reporting.
     self._filename: str = utils.file_stem(filename)
 
-    self._resumed_stderr: BinaryIO = tempfile.TemporaryFile('a+b')
+    self._resumed_stderr: BinaryIO = tempfile.TemporaryFile("a+b")
 
     # Final error status. Used once _stderr has been cleaned up.
     self._final_error: Optional[bool] = None
 
     # TODO: foward args if more sophisticated construction is needed.
-    super().__init__(filename, bitrate=self._TARGET_BITRATE, stderr=self._resumed_stderr,
-                     options=f'-filter:a "dynaudnorm=p=0.9:s=5" -bufsize {2*self._TARGET_BITRATE}k',
-                     before_options=f'-ss {str(elapsed)}')
+    super().__init__(
+      filename,
+      bitrate=self._TARGET_BITRATE,
+      stderr=self._resumed_stderr,
+      options=f'-filter:a "dynaudnorm=p=0.9:s=5" -bufsize {2 * self._TARGET_BITRATE}k',
+      before_options=f"-ss {str(elapsed)}",
+    )
 
     self._elapsed: datetime.timedelta = elapsed
 
@@ -63,9 +67,9 @@ class ResumedAudio(discord.FFmpegOpusAudio):
 
     try:
       self._resumed_stderr.seek(0)
-      err_string: str = self._resumed_stderr.read().decode('utf8')
+      err_string: str = self._resumed_stderr.read().decode("utf8")
 
-      if 'Invalid data' in err_string:
+      if "Invalid data" in err_string:
         utils.log(utils.LogSeverity.ERROR, f'Error reading "{self._filename}".')
         return True
 
@@ -80,7 +84,6 @@ class ResumedAudio(discord.FFmpegOpusAudio):
 
 # Maintains a cursor in a list of music files and exposes an audio stream for the current file.
 class Playlist:
-
   def __init__(self, name: str, fs: list[str]):
     # Make copy.
     self._name: str = name
@@ -107,13 +110,10 @@ class Playlist:
       return None
 
     if self._cur_src:
-      utils.log(utils.LogSeverity.INFO,
-                f'Resuming "{self.current_track_name}".')
-      self._cur_src = ResumedAudio(
-          self._fs[self._index], self._cur_src.elapsed + self._ff)
+      utils.log(utils.LogSeverity.INFO, f'Resuming "{self.current_track_name}".')
+      self._cur_src = ResumedAudio(self._fs[self._index], self._cur_src.elapsed + self._ff)
     else:
-      utils.log(utils.LogSeverity.INFO,
-                f'Starting "{self.current_track_name}".')
+      utils.log(utils.LogSeverity.INFO, f'Starting "{self.current_track_name}".')
       self._cur_src = ResumedAudio(self._fs[self._index], self._ff)
 
     # When resuming the audio, the current fast-forward amount is already inherited from the
@@ -147,7 +147,7 @@ class Playlist:
   # Returns a full track listing with a cursor next to the currently-playing track.
   def GetTrackListing(self) -> str:
     titles: list[str] = [utils.file_stem(fn) for fn in self._fs]
-    return f'{self._name}:\n\n' + _format_listing(titles, self._index)
+    return f"{self._name}:\n\n" + _format_listing(titles, self._index)
 
   @property
   def name(self) -> str:
@@ -160,4 +160,4 @@ class Playlist:
 
 # Resturns a playlist listing. Puts a cursor next to one "index" playlist.
 def get_playlist_listing(playlists, index):
-  return 'Playlists:\n\n' + _format_listing(playlists, index)
+  return "Playlists:\n\n" + _format_listing(playlists, index)

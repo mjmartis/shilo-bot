@@ -13,5 +13,12 @@ py-cord = { git = "https://github.com/Pycord-Development/pycord", rev = "fc25e1b
 
 [dependency-groups]
 dev = [
-    "autopep8>=2.3.2",
+    "ruff>=0.15.11",
 ]
+
+[tool.ruff.lint]
+ignore = ["E741"]
+
+[tool.ruff]
+indent-width = 2
+line-length = 100

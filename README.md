@@ -42,4 +42,4 @@ ShiloBot is decomposed into four modules:
   - `playlist.py`. Audio- and playlist-specific logic, including an abstract representation of a single playlist.
   - `util.py`. Utility behaviour, such as logging and table formatting.
 
-I used a consistent but fairly arbitrary format for the code. To enforce it, use `autopep8 --in-place *.py`
+I used a consistent but fairly arbitrary format for the code. To enforce it, use `uv run ruff format`.
